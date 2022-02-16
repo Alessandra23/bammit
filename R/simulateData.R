@@ -1,0 +1,144 @@
+#' @export
+#'
+simulateDataAmmi <- function(I, J, mu, sg, se, sy, lambda) {
+  # number of obs
+  N <- I * J
+  Q <- length(lambda)
+
+  # generate main effects
+
+  g <- rnorm(I, 0, sg)
+  e <- rnorm(J, 0, se)
+
+  # generate lambda, gamma, delta and kappa
+  gamma <- generate_gamma_delta(I, Q)
+  delta <- generate_gamma_delta(J, Q)
+
+  x <- expand.grid(1:I, 1:J)
+  names(x) <- c("g", "e")
+  x$g <- as.factor(x$g)
+  x$e <- as.factor(x$e)
+
+  # generate bilinear term
+  blin <- rep(0, N)
+  for (k in 1:length(lambda)) {
+    blin <- blin + lambda[k] * gamma[x[, "g"], k] * delta[x[, "e"], k]
+  }
+
+  mu_ij <- mu + g[x[, "g"]] + e[x[, "e"]] + blin
+
+  # generate y
+  y <- rnorm(N, mu_ij, sy)
+
+  return(list(
+    y = y,
+    g = g,
+    e = e,
+    blin = blin,
+    I = I,
+    J = J,
+    Q = Q,
+    x = x
+  ))
+}
+
+
+#' @export
+#'
+simulateDataBammit <- function(I, J, K, mu, sg, se, st, sy, lambda){
+  N <- I * J * K
+  Q <- length(lambda)
+
+  # generate main effects
+
+  g <- rnorm(I, 0, sg)
+  e <- rnorm(J, 0, se)
+  t <- rnorm(K, 0, st)
+
+  # generate lambda, gamma, delta and kappa
+  gamma <- generate_gamma_delta(I, Q)
+  delta <- generate_gamma_delta(J, Q)
+  kappa <- generate_gamma_delta(K, Q)
+
+  x <- expand.grid(1:I, 1:J, 1:K)
+  names(x) <- c("g", "e", "t")
+  x$g <- as.factor(x$g)
+  x$e <- as.factor(x$e)
+  x$t <- as.factor(x$t)
+
+  # generate bilinear term
+  blin <- rep(0, N)
+  for (k in 1:length(lambda)) {
+    blin <- blin + lambda[k] * gamma[x[, "g"], k] * delta[x[, "e"], k] *kappa[x[, "t"], k]
+  }
+
+  mu_ij <- mu + g[x[, "g"]] + e[x[, "e"]] + blin
+
+  # generate y
+  y <- rnorm(N, mu_ij, sy)
+
+  return(list(
+    y = y,
+    g = g,
+    e = e,
+    t = t,
+    blin = blin,
+    I = I,
+    J = J,
+    K = K,
+    Q = Q,
+    x = x
+  ))
+}
+
+# Function from ambarti package (https://github.com/ebprado/AMBARTI)
+
+square_root_matrix <- function(x) {
+
+  # When Q = 1, x will be a scalar
+  if (nrow(x) == 1) {
+    return(sqrt(x))
+  }
+
+  # When Q > 1, then x will be a matrix
+  if (nrow(x) > 1) {
+    # Jordan normal form
+    X <- eigen(x)
+    P <- X$vectors
+    A <- diag(X$values)
+
+    A_sqrt <- diag(sqrt(X$values))
+    P_inv <- solve(P)
+    x_sqrt <- P %*% A_sqrt %*% P_inv
+    return(x_sqrt)
+  }
+}
+
+generate_gamma_delta <- function(INDEX, Q) {
+  first_row <- TRUE
+
+  while (first_row) {
+    raw_par <- matrix(rnorm(INDEX * Q), ncol = Q)
+    par_mean <- matrix(rep(apply(raw_par, 2, mean), each = nrow(raw_par)), ncol = Q)
+    par_aux <- raw_par - par_mean
+
+    # Constraints ----
+    # apply(par_aux,2,sum)
+    parTpar <- solve(t(par_aux) %*% (par_aux))
+    A <- square_root_matrix(parTpar)
+    samples <- par_aux %*% A
+
+    # Force the first to be positive
+    for (i in 1:nrow(samples)) {
+      row1 <- samples[1, ]
+      if (all(samples[i, ] > 0)) {
+        aux <- samples[i, ]
+        samples[1, ] <- aux
+        samples[i, ] <- row1
+        return(samples)
+      }
+    }
+    # t(samples)%*%samples == 0
+    # apply(samples,2,sum) == diag(Q)
+  }
+}

@@ -1,0 +1,79 @@
+---
+title: "Bayesian AMMIT"
+author: "Alessandra Lemos"
+#date: "2/16/2022"
+output: 
+  html_document:
+    number_sections: true
+---
+
+```{r, include=FALSE}
+library(bammit)
+library(R2jags)
+library(ggplot2)
+library(gridExtra)
+```
+
+# - AMMI Model 
+The model is formulated as
+$$y_{ij} = \mu + g_i + e_j + \sum\limits_{q = 1}^Q \lambda_q\gamma_{iq}\delta_{jq} + \epsilon_{ij},$$
+where $\epsilon_{ij}\sim N(0,\sigma^2_y)$. We have two formulations:
+
+ESCREVER TABELA COMPARANDO JOSSE E CROSSA AQUI
+
+## - Results
+
+### Q = 1
+
+```{r, comment = FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+data <- simulateDataAmmi(I = 12, J = 6, mu = 100, sg = 10, se = 10, sy = 2, lambda = 10)
+josseModel <- josseJags(data = data,  mmu = 90, smu = 10,
+                        sg = 10, se = 10, slambda = 1,
+                        a = 0.1, b = 0.1, nthin = 1, nburnin = 500)
+crossaModel <- crossaJags(data = data, mmu = 90, smu = 10, 
+                          mug = 0, sg = 10, mue = 0, se = 10, 
+                          mulambda = 10, slambda = 1, a = 0.1, b = 0.1, stheta = 1,
+                          nthin = 1, nburnin = 100)
+grid.arrange(
+qplot(data$blin, josseModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - Josse", xlab = "True bilinear") + geom_abline() + geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6),
+qplot(data$blin, crossaModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - Crossa", xlab = "True bilinear") + geom_abline() +  geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6),
+nrow = 1)
+```
+
+### Q = 2
+
+```{r, echo=FALSE, message=FALSE, warning = FALSE}
+data <- simulateDataAmmi(I = 12, J = 6, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10,12))
+josseModel <- josseJags(data = data,  mmu = 90, smu = 10,
+                        sg = 10, se = 10, slambda = 1,
+                        a = 0.1, b = 0.1, nthin = 1, nburnin = 500)
+crossaModel <- crossaJags(data = data, mmu = 90, smu = 10, 
+                          mug = 0, sg = 10, mue = 0, se = 10, 
+                          mulambda = 10, slambda = 1, a = 0.1, b = 0.1, stheta = 1,
+                          nthin = 1, nburnin = 100)
+grid.arrange(
+qplot(data$blin, josseModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - Josse", xlab = "True bilinear") + geom_abline() + geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6),
+qplot(data$blin, crossaModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - Crossa", xlab = "True bilinear") + geom_abline() +  geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6),
+nrow = 1)
+```
+
+### Q = 2
+
+```{r,echo=FALSE,message=FALSE, warning=FALSE}
+data <- simulateDataAmmi(I = 12, J = 6, mu = 100, sg = 10, se = 10, sy = 2, lambda = 10)
+josseModel <- josseJags(data = data,  mmu = 90, smu = 10,
+                        sg = 10, se = 10, slambda = 1,
+                        a = 0.1, b = 0.1, nthin = 1, nburnin = 500)
+crossaModel <- crossaJags(data = data, mmu = 90, smu = 10, 
+                          mug = 0, sg = 10, mue = 0, se = 10, 
+                          mulambda = 10, slambda = 1, a = 0.1, b = 0.1, stheta = 100,
+                          nthin = 1, nburnin = 100)
+grid.arrange(qplot(data$blin, josseModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - Josse", xlab = "True bilinear") + geom_abline() + geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6),
+             qplot(data$blin, crossaModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - Crossa", xlab = "True bilinear") + geom_abline() +  geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6),
+             nrow = 1)
+```
+
+INCLUIR AQUI RESULTADOS DA PREDICAO
+
+# - BAMMIT Model
+
