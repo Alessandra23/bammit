@@ -4,14 +4,14 @@ library(tidyverse)
 
 data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 2, lambda = 10)
 data <- simulateDataAmmi(I = 6, J = 4, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10,12))
-data <- simulateDataAmmi(I = 6, J = 4, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10,12,25))
+data <- simulateDataAmmi(I = 12, J = 6, mu = 100, sg = 10, se = 10, sy = 0.5, lambda = c(10,12,25))
 
 josseModel <- josseJags(data = data,  mmu = 90, smu = 10,
                         sg = 10, se = 10, slambda = 1,
                         a = 0.1, b = 0.1, nthin = 1, nburnin = 1000)
 crossaModel <- crossaJags(data = data, mmu = 90, smu = 10,
                           mug = 0, sg = 10, mue = 0, se = 10,
-                          mulambda = 10, slambda = 1, a = 0.1, b = 0.1, stheta = 100,
+                          mulambda = 10, slambda = 1, a = 0.1, b = 0.1, stheta = 1,
                           nthin = 1, nburnin = 1000)
 
 crossaModel$BUGSoutput$sims.list$gamma[,,2]
@@ -35,3 +35,11 @@ bammitModel <- bammitJags(data = dataT, mmu = 90, smu = 10, mug = 0, sg = 10, mu
 qplot(dataT$blin, bammitModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - BAMMIT", xlab = "True bilinear") + geom_abline() +
   geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6)
 
+yhatB <- predictionBAMMIT(bammitModel, dataT)
+
+bammbammitModel$BUGSoutput$mean$blin
+dataT$blin
+data <- dataT
+
+qplot(yhatB, dataT$y, xlab = expression(hat(y)), ylab = "y") + geom_abline() +
+  geom_abline() + theme_bw() + geom_point(colour = "red", size = 0.6)

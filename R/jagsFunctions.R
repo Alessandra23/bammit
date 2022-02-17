@@ -158,12 +158,6 @@ crossaJags <- function(data, mmu, smu, mug, sg, mue, se, mulambda, slambda, sthe
     }
   }
 
-  # for(q in 1:Q) {
-  # for(j in 1:J) {
-  # delta[j, q] ~ dnorm(0, 1) # Prior on environment interactions
-  # }
-  # }
-
   # Prior on eigenvalues
   for(q in 1:Q) {
     lambda_raw[q] ~ dnorm(mulambda, slambda^-2)T(0,)
