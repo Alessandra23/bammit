@@ -1,3 +1,16 @@
+#' Simulate data from AMMI model
+#'
+#' @description A funtion to generate values of a AMMI model
+#' @param I Number of genotypes
+#' @param J Number of environments
+#' @param mu Grand mean
+#' @param sg standard deviation of genotypes
+#' @param se standard deviation of environments
+#' @param sy standard deviation of the model
+#' @param lambda vector of values of $\lambda$
+#' @return A list containing the response y, genotypes, environments, bilinear term, Q, and a matrix of g and e.
+#' @example
+#' data <- simulateDataAmmi(I = 6, J = 4, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10,12))
 #' @export
 #'
 simulateDataAmmi <- function(I, J, mu, sg, se, sy, lambda) {
@@ -43,6 +56,21 @@ simulateDataAmmi <- function(I, J, mu, sg, se, sy, lambda) {
 }
 
 
+#' Simulate data from Bayesian AMMIT model
+#'
+#' @description A funtion to generate values of the BAMMIT model
+#' @param I Number of genotypes.
+#' @param J Number of environments.
+#' @param K Number of terms of time.
+#' @param mu Grand mean.
+#' @param sg standard deviation of genotypes.
+#' @param se standard deviation of environments.
+#' @param st standard deviation of time.
+#' @param sy standard deviation of the model.
+#' @param lambda vector of values of $\lambda$.
+#' @return A list containing the response y, genotypes, environments, time,
+#' bilinear term, Q, and a matrix of g, e and t.
+#' @example data <- simulateDataBammit(I = 6, J = 4, K = 2, mu = 100, sg = 10, se = 10, st = 10, sy = 2, lambda = c(10,12))
 #' @export
 #'
 simulateDataBammit <- function(I, J, K, mu, sg, se, st, sy, lambda){

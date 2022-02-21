@@ -1,4 +1,16 @@
-# Jags code Jossi's model
+#' Jags code Jossi's model
+#' @description A Jags code to estimated the parameters of AMMI model followuing Josse's approach
+#' @param data A list containing the simulated values of y, the values of I, J, and Q and a mtrix od g and e.
+#' @param mmu Mean of the grand mean
+#' @param smu sd of grand mean
+#' @param sg sd of genotypes
+#' @param se sd of environments
+#' @param slambda sd of $\lambda$
+#' @param a shape parameter of a Gamma distribuion
+#' @param b scale parameter of a Gamma distribuion
+#' @param nthin thinning rate
+#' @param nburnin length of burn in
+#' @return The output of Jags function
 #' @export
 #' @importFrom R2jags 'jags'
 josseJags <- function(data, mmu, smu, sg, se, slambda, a, b, nthin = 1, nburnin = 2000){
