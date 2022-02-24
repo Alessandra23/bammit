@@ -46,10 +46,6 @@
 # }
 
 
-
-library(RColorBrewer)
-library(ggplot2)
-
 #' @export
 sigmaComp <- function(sigma, lambda = 10, sizes = c(12, 6), slambda = 1, ncol = ncol){
   I <- sizes[1]
@@ -64,8 +60,8 @@ sigmaComp <- function(sigma, lambda = 10, sizes = c(12, 6), slambda = 1, ncol = 
                               a = 0.1, b = 0.1, nthin = 1, nburnin = 500)
 
       crossaModel <- crossaJags(data = data, mmu = 90, smu = 10,
-                                mug = 0, sg = 10, mue = 0, se = 10,
-                                mulambda = 10, slambda = slambda, a = 0.1, b = 0.1, stheta = 1,
+                                mug = 0, mue = 0,
+                                a = 0.1, b = 0.1, stheta = 1,
                                 nthin = 1, nburnin = 500)
 
       blinSigma[[j]]$blinReal <- data$blin

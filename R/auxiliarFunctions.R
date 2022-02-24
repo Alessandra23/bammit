@@ -50,6 +50,29 @@ predictionBAMMIT <- function(model, data) {
   return(yhat)
 }
 
+#' Predicted values of BAMMIT model
+#' @description A function to calculate the predicted values of a BAMMIT model from a JAGS
+#' @param model A object from Jags model
+#' @param data A object from simulated data.
+#' @return A vector of predicted values of the response variable.
+#' @export
+#'
+predictionBAMMITRealData <- function(model, data) {
+  muhat <- model$BUGSoutput$mean$muall
+  ghat <- model$BUGSoutput$mean$g
+  ehat <- model$BUGSoutput$mean$e
+  that <- model$BUGSoutput$mean$t
+  blinhat <- model$BUGSoutput$mean$blin
+
+  N <- length(data$Mean)
+
+  yhat <- rep(muhat, N) + ghat[data[, "Genotype"]$Genotype] +
+    ehat[data[, "Environment"]$Environment] + that[data[, "Year"]$Year] +  blinhat
+
+  return(yhat)
+}
+
+
 #' @export
 #'
 loadRData <- function(fileName){

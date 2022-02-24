@@ -2,6 +2,10 @@
 library(R2jags)
 library(tidyverse)
 library(reshape2)
+library(RColorBrewer)
+library(ggplot2)
+library(gridExtra)
+
 
 data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 2, lambda = 10)
 data <- simulateDataAmmi(I = 6, J = 4, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10, 12))
@@ -46,7 +50,7 @@ grid.arrange(
 )
 
 
-compSigmas2 <- sigmaComp(sigma = c(0.5, 2, 10), lambda = 10, slambda = 10, ncol = 3)
+compSigmas2 <- sigmaComp(sigma = c(0.5, 2, 10), lambda = c(2,10, 25),slambda = 1,  ncol = 3)
 compSigmas2$plot[[1]]
 compSigmas2$plot[[2]]
 compSigmas2$plot[[3]]
@@ -74,7 +78,7 @@ grid.arrange(
 ## Visualize gamma and delta simulated
 
 set.seed(2022)
-data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 0.5, lambda = c(10, 12, 25))
+data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 0.5, lambda = c(2))
 
 
 
