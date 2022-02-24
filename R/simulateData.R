@@ -7,7 +7,7 @@
 #' @param sg standard deviation of genotypes
 #' @param se standard deviation of environments
 #' @param sy standard deviation of the model
-#' @param lambda vector of values of $\lambda$
+#' @param lambda vector of values of \eqn{\lambda}.
 #' @return A list containing the response y, genotypes, environments, bilinear term, Q, and a matrix of g and e.
 #' @example
 #' data <- simulateDataAmmi(I = 6, J = 4, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10,12))
@@ -47,6 +47,9 @@ simulateDataAmmi <- function(I, J, mu, sg, se, sy, lambda) {
     y = y,
     g = g,
     e = e,
+    lambda = lambda,
+    gamma = gamma,
+    delta = delta,
     blin = blin,
     I = I,
     J = J,
@@ -67,7 +70,7 @@ simulateDataAmmi <- function(I, J, mu, sg, se, sy, lambda) {
 #' @param se standard deviation of environments.
 #' @param st standard deviation of time.
 #' @param sy standard deviation of the model.
-#' @param lambda vector of values of $\lambda$.
+#' @param lambda vector of values of \eqn{\lambda}.
 #' @return A list containing the response y, genotypes, environments, time,
 #' bilinear term, Q, and a matrix of g, e and t.
 #' @example data <- simulateDataBammit(I = 6, J = 4, K = 2, mu = 100, sg = 10, se = 10, st = 10, sy = 2, lambda = c(10,12))
@@ -110,6 +113,9 @@ simulateDataBammit <- function(I, J, K, mu, sg, se, st, sy, lambda){
     g = g,
     e = e,
     t = t,
+    gamma = gamma,
+    delta = delta,
+    kappa = kappa,
     blin = blin,
     I = I,
     J = J,

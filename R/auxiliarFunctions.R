@@ -49,3 +49,10 @@ predictionBAMMIT <- function(model, data) {
 
   return(yhat)
 }
+
+#' @export
+#'
+loadRData <- function(fileName){
+  load(fileName)
+  get(ls()[ls() != "fileName"])
+}
