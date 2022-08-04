@@ -7,7 +7,7 @@ library(ggplot2)
 library(gridExtra)
 
 
-data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 2, lambda = 10)
+data <- simulateDataAmmi(I = 12, J = 6, mu = 100, sg = 10, se = 10, sy = 1.5, lambda = 10, stheta = 1)
 data <- simulateDataAmmi(I = 6, J = 4, mu = 100, sg = 10, se = 10, sy = 2, lambda = c(10, 12))
 data <- simulateDataAmmi(I = 12, J = 6, mu = 100, sg = 10, se = 10, sy = 0.5, lambda = c(2, 12, 25))
 
@@ -24,7 +24,7 @@ qplot(data$blin, josseModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - J
 crossaModel <- crossaJags(
   data = data, mmu = 90, smu = 10,
   mug = 0, mue = 0, a = 0.1, b = 0.1, stheta = 10,
-  nthin = 1, nburnin = 500
+  nthin = 1, nburnin = 100
 )
 
 
@@ -38,7 +38,7 @@ qplot(data$blin, crossaModel$BUGSoutput$mean$blin, ylab = "Estimated bilinear - 
 
 
 
-compSigmas <- sigmaComp(sigma = c(0.5, 2, 10), lambda = 10, slambda = 1, ncol = 3)
+compSigmas <- sigmaComp(sigma = c(0.5, 2, 10), lambda = 12, slambda = 10, sthetas = c(10,10), ncol = 3)
 compSigmas$plot[[1]]
 compSigmas$plot[[2]]
 compSigmas$plot[[3]]
@@ -78,15 +78,16 @@ grid.arrange(
 ## Visualize gamma and delta simulated
 
 set.seed(2022)
-data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 0.5, lambda = c(2))
-
-
+data <- simulateDataAmmi(I = 25, J = 6, mu = 100, sg = 10, se = 10, sy = 0.5,
+                         lambda = c(10), stheta1 = 100, stheta2 = 1)
 
 
 test <- vizSimAmmi(data)
+test$boxplotGammaDelta
+
+
 test$boxplotGamma
 test$boxplotDelta
-test$boxplotGammaDelta
 test$geBoxplot
 
 

@@ -1,100 +1,407 @@
-#' Jags code Jossi's model
+#' Jags code BAMMIT model
 #' @description A Jags code to estimated the parameters of AMMI model followuing Josse's approach
 #' @param data A list containing the simulated values of y, the values of I, J, and Q and a mtrix od g and e.
 #' @param mmu Mean of the grand mean
 #' @param smu sd of grand mean
-#' @param sg sd of genotypes
-#' @param se sd of environments
-#' @param slambda sd of \eqn{\lambda}.
-#' @param a shape parameter of a Gamma distribuion
-#' @param b scale parameter of a Gamma distribuion
+#' @param Q number of components of interaction term
+#' @param a shape parameter of a Gamma distribution
+#' @param b scale parameter of a Gamma distribution
 #' @param nthin thinning rate
 #' @param nburnin length of burn in
 #' @return The output of Jags function
 #' @export
 #' @importFrom R2jags 'jags'
-josseJags <- function(data, mmu, smu, sg, se, slambda, a, b, nthin = 1, nburnin = 2000){
-  modelCode <- '
-  model
-  {
-  # Likelihood
-   for (k in 1:N) {
-    Y[k] ~ dnorm(mu[k], sy^-2)
-    mu[k] = muall + g[genotype[k]] + e[environment[k]] + blin[k]
-    blin[k] = sum(lambda[1:Q] * gamma[genotype[k],1:Q] * delta[environment[k],1:Q])
-   }
+bammitJags <- function(data, Q, mmu, smu, a,b, stheta = 1, nthin, nburnin){
 
-  # Priors
-  # Prior on grand mean
-   muall ~ dnorm(mmu, smu^-2)
-
-  # Prior on genotype effect
-  for(i in 1:I) {
-  g[i] ~ dnorm(0, sg^-2) # Prior on genotype effect
-  }
-
-  # Prior on environment effect
-  for(j in 1:J) {
-  e[j] ~ dnorm(0, se^-2) # Prior on environment effect
-  }
-
-  # Priors on gamma
-  for(q in 1:Q) {
-  gamma[1, q] ~ dnorm(0, 1)T(0,) # First one is restriced to be positive
-  for(i in 2:I) {
-  gamma[i, q] ~ dnorm(0, 1) # Prior on genotype interactions
-  }
-  }
-
-  # Priors on delta
-  for(q in 1:Q) {
-  for(j in 1:J) {
-  delta[j, q] ~ dnorm(0, 1) # Prior on environment interactions
-  }
-  }
-
-  # Prior on eigenvalues
-  for(q in 1:Q) {
-  lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
-  }
-  lambda = sort(lambda_raw)
-
-
-  # Prior on residual standard deviation
-  sy ~ dgamma(a, b)
-  }
-  '
-  # from data
   Y <- data$y
-  I <- data$I
-  J <- data$J
-  Q <- data$Q
-  N <- I*J
-  genotype <- data$x[, "g"]
-  environment <- data$x[, "e"]
+  V <- length(data$Bv)
+  Bv <- data$Bv
+  N <- length(data$y)
 
-  # Set up the data
-  modelData <- list(
-    N = N,
-    Y = Y,
-    I = I,
-    J = J,
-    Q = Q,
-    genotype = genotype,
-    environment = environment,
-    mmu = mmu,
-    smu = smu,
-    sg = sg,
-    se = se,
-    slambda = slambda,
-    a = a,
-    b = b
-  )
+  if(V == 2){
 
-  # Choose the parameters to watch
-  modelParameters <- c(
-    "g", "e", "lambda", "gamma", "delta", "sy", "muall", "blin"
-  )
+    modelCode <- "
+    model{
+      # Likelihood
+      for (n in 1:N) {
+          Y[n] ~ dnorm(mu[n], sy)
+          mu[n] = muall + b1[var1[n]] + b2[var2[n]] + int[n]
+          int[n] = sum(lambda[1:Q] * beta1[var1[n],1:Q] * beta2[var2[n],1:Q])
+      }
+
+      # Priors
+
+      muall ~ dnorm(mmu, smu^-2) # grand mean
+
+      for(i in 1:B1) {
+          b1[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
+      }
+
+      for(i in 1:B2) {
+          b2[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
+      }
+
+      for(q in 1:Q){
+          for(i in 1:B1){
+            thetaBeta1[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta1[q] = sum(thetaBeta1[1:B1,q])/B1
+
+          for(i in 1:B1){
+            thetaBeta1New[i,q] = thetaBeta1[i,q] - mBeta1[q]
+          }
+
+          sqrtThetaBeta1[q] = sqrt(1/(sum(thetaBeta1New[1:B1,q]^2 + 0.000001)))
+          for(i in 1:B1){
+            beta1[i,q] = thetaBeta1New[i,q]*sqrtThetaBeta1[q]
+          }
+      }
+
+
+       for(q in 1:Q){
+          for(i in 1:B2){
+            thetaBeta2[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta2[q] = sum(thetaBeta2[1:B2,q])/B2
+
+          for(i in 1:B2){
+            thetaBeta2New[i,q] = thetaBeta2[i,q] - mBeta2[q]
+          }
+
+          sqrtThetaBeta2[q] = sqrt(1/(sum(thetaBeta2New[1:B2,q]^2 + 0.000001)))
+          for(i in 1:B2){
+            beta2[i,q] = thetaBeta2New[i,q]*sqrtThetaBeta2[q]
+          }
+      }
+
+      # Prior on eigenvalues
+      for(q in 1:Q) {
+        lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
+      }
+      lambda = sort(lambda_raw)
+
+      #Priors
+      sb1 ~ dt(0, 1, 1)T(0,)
+      sb2 ~ dt(0, 1, 1)T(0,)
+      slambda ~ dt(0, 1, 1)T(0,)
+
+      sy ~ dgamma(a, b) # Prior on residual standard deviation - inverse of sy
+
+    }
+    "
+
+    B1 <- Bv[1]
+    B2 <- Bv[2]
+
+    x <- rev(expand.grid(lapply(rev(Bv), function(x) 1:x)))
+    colnames(x) <- paste0('var', 1:2)
+    var1 <- x$var1
+    var2 <- x$var2
+
+    # Set up the data
+    modelData <- list(
+      N = N,
+      Y = Y,
+      B1 = B1,
+      B2 = B2,
+      Q = Q,
+      var1 = var1,
+      var2 = var2,
+      mmu = mmu,
+      smu = smu,
+      stheta = stheta,
+      a = a,
+      b = b
+    )
+
+    # Choose the parameters to watch
+    modelParameters <- c(
+      "b1", "b2",  "lambda", "beta1", "beta2", "sy", "muall", "int"
+    )
+
+
+  }
+
+  if(V == 3){
+
+    modelCode <- "
+    model{
+      # Likelihood
+      for (n in 1:N) {
+          Y[n] ~ dnorm(mu[n], sy)
+          mu[n] = muall + b1[var1[n]] + b2[var2[n]] + b3[var3[n]] + int[n]
+          int[n] = sum(lambda[1:Q] * beta1[var1[n],1:Q] * beta2[var2[n],1:Q]* beta3[var3[n],1:Q])
+      }
+
+      # Priors
+
+      muall ~ dnorm(mmu, smu^-2) # grand mean
+
+      for(i in 1:B1) {
+          b1[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
+      }
+
+      for(i in 1:B2) {
+          b2[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
+      }
+
+      for(i in 1:B3) {
+          b3[i] ~ dnorm(0, sb3^-2) # Prior on effect 3
+      }
+
+      for(q in 1:Q){
+          for(i in 1:B1){
+            thetaBeta1[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta1[q] = sum(thetaBeta1[1:B1,q])/B1
+
+          for(i in 1:B1){
+            thetaBeta1New[i,q] = thetaBeta1[i,q] - mBeta1[q]
+          }
+
+          sqrtThetaBeta1[q] = sqrt(1/(sum(thetaBeta1New[1:B1,q]^2 + 0.000001)))
+          for(i in 1:B1){
+            beta1[i,q] = thetaBeta1New[i,q]*sqrtThetaBeta1[q]
+          }
+      }
+
+
+       for(q in 1:Q){
+          for(i in 1:B2){
+            thetaBeta2[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta2[q] = sum(thetaBeta2[1:B2,q])/B2
+
+          for(i in 1:B2){
+            thetaBeta2New[i,q] = thetaBeta2[i,q] - mBeta2[q]
+          }
+
+          sqrtThetaBeta2[q] = sqrt(1/(sum(thetaBeta2New[1:B2,q]^2 + 0.000001)))
+          for(i in 1:B2){
+            beta2[i,q] = thetaBeta2New[i,q]*sqrtThetaBeta2[q]
+          }
+       }
+
+      for(q in 1:Q){
+          for(i in 1:B3){
+            thetaBeta3[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta3[q] = sum(thetaBeta3[1:B3,q])/B3
+
+          for(i in 1:B3){
+            thetaBeta3New[i,q] = thetaBeta3[i,q] - mBeta3[q]
+          }
+
+          sqrtThetaBeta3[q] = sqrt(1/(sum(thetaBeta3New[1:B3,q]^2 + 0.000001)))
+          for(i in 1:B3){
+            beta3[i,q] = thetaBeta3New[i,q]*sqrtThetaBeta3[q]
+          }
+      }
+
+      # Prior on eigenvalues
+      for(q in 1:Q) {
+        lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
+      }
+      lambda = sort(lambda_raw)
+
+      #Priors
+      sb1 ~ dt(0, 1, 1)T(0,)
+      sb2 ~ dt(0, 1, 1)T(0,)
+      sb3 ~ dt(0, 1, 1)T(0,)
+      slambda ~ dt(0, 1, 1)T(0,)
+
+      sy ~ dgamma(a, b) # Prior on residual standard deviation - inverse of sy
+
+    }
+    "
+
+    B1 <- Bv[1]
+    B2 <- Bv[2]
+    B3 <- Bv[3]
+
+    x <- rev(expand.grid(lapply(rev(Bv), function(x) 1:x)))
+    colnames(x) <- paste0('var', 1:3)
+    var1 <- x$var1
+    var2 <- x$var2
+    var3 <- x$var3
+
+    # Set up the data
+    modelData <- list(
+      N = N,
+      Y = Y,
+      B1 = B1,
+      B2 = B2,
+      B3 = B3,
+      Q = Q,
+      var1 = var1,
+      var2 = var2,
+      var3 = var3,
+      mmu = mmu,
+      smu = smu,
+      stheta = stheta,
+      a = a,
+      b = b
+    )
+
+    # Choose the parameters to watch
+    modelParameters <- c(
+      "b1", "b2", "b3" ,"lambda", "beta1", "beta2", "beta3", "sy", "muall", "int"
+    )
+
+  }
+
+  if(V == 4){
+
+    modelCode <- "
+    model{
+      # Likelihood
+      for (n in 1:N) {
+          Y[n] ~ dnorm(mu[n], sy)
+          mu[n] = muall + b1[var1[n]] + b2[var2[n]] + b3[var3[n]] + b4[var4[n]]  + int[n]
+          int[n] = sum(lambda[1:Q] * beta1[var1[n],1:Q] * beta2[var2[n],1:Q] * beta3[var3[n],1:Q] * beta4[var4[n],1:Q])
+      }
+
+      # Priors
+
+      muall ~ dnorm(mmu, smu^-2) # grand mean
+
+      for(i in 1:B1) {
+          b1[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
+      }
+
+      for(i in 1:B2) {
+          b2[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
+      }
+
+      for(i in 1:B3) {
+          b3[i] ~ dnorm(0, sb3^-2) # Prior on effect 3
+      }
+
+      for(i in 1:B4) {
+          b4[i] ~ dnorm(0, sb4^-2) # Prior on effect 4
+      }
+
+      for(q in 1:Q){
+          for(i in 1:B1){
+            thetaBeta1[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta1[q] = sum(thetaBeta1[1:B1,q])/B1
+
+          for(i in 1:B1){
+            thetaBeta1New[i,q] = thetaBeta1[i,q] - mBeta1[q]
+          }
+
+          sqrtThetaBeta1[q] = sqrt(1/(sum(thetaBeta1New[1:B1,q]^2 + 0.000001)))
+          for(i in 1:B1){
+            beta1[i,q] = thetaBeta1New[i,q]*sqrtThetaBeta1[q]
+          }
+      }
+
+
+       for(q in 1:Q){
+          for(i in 1:B2){
+            thetaBeta2[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta2[q] = sum(thetaBeta2[1:B2,q])/B2
+
+          for(i in 1:B2){
+            thetaBeta2New[i,q] = thetaBeta2[i,q] - mBeta2[q]
+          }
+
+          sqrtThetaBeta2[q] = sqrt(1/(sum(thetaBeta2New[1:B2,q]^2 + 0.000001)))
+          for(i in 1:B2){
+            beta2[i,q] = thetaBeta2New[i,q]*sqrtThetaBeta2[q]
+          }
+       }
+
+      for(q in 1:Q){
+          for(i in 1:B3){
+            thetaBeta3[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta3[q] = sum(thetaBeta3[1:B3,q])/B3
+
+          for(i in 1:B3){
+            thetaBeta3New[i,q] = thetaBeta3[i,q] - mBeta3[q]
+          }
+
+          sqrtThetaBeta3[q] = sqrt(1/(sum(thetaBeta3New[1:B3,q]^2 + 0.000001)))
+          for(i in 1:B3){
+            beta3[i,q] = thetaBeta3New[i,q]*sqrtThetaBeta3[q]
+          }
+      }
+
+      for(q in 1:Q){
+          for(i in 1:B4){
+            thetaBeta4[i,q] ~ dnorm(0,stheta)
+          }
+          mBeta4[q] = sum(thetaBeta4[1:B4,q])/B4
+
+          for(i in 1:B4){
+            thetaBeta4New[i,q] = thetaBeta4[i,q] - mBeta4[q]
+          }
+
+          sqrtThetaBeta4[q] = sqrt(1/(sum(thetaBeta4New[1:B4,q]^2 + 0.000001)))
+          for(i in 1:B4){
+            beta4[i,q] = thetaBeta4New[i,q]*sqrtThetaBeta4[q]
+          }
+      }
+
+      # Prior on eigenvalues
+      for(q in 1:Q) {
+        lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
+      }
+      lambda = sort(lambda_raw)
+
+      #Priors
+      sb1 ~ dt(0, 1, 1)T(0,)
+      sb2 ~ dt(0, 1, 1)T(0,)
+      sb3 ~ dt(0, 1, 1)T(0,)
+      sb4 ~ dt(0, 1, 1)T(0,)
+      slambda ~ dt(0, 1, 1)T(0,)
+
+      sy ~ dgamma(a, b) # Prior on residual standard deviation - inverse of sy
+
+    }
+    "
+
+    B1 <- Bv[1]
+    B2 <- Bv[2]
+    B3 <- Bv[3]
+    B4 <- Bv[4]
+
+    x <- rev(expand.grid(lapply(rev(Bv), function(x) 1:x)))
+    colnames(x) <- paste0('var', 1:4)
+    var1 <- x$var1
+    var2 <- x$var2
+    var3 <- x$var3
+    var4 <- x$var4
+
+    # Set up the data
+    modelData <- list(
+      N = N,
+      Y = Y,
+      B1 = B1,
+      B2 = B2,
+      B3 = B3,
+      B4 = B4,
+      Q = Q,
+      var1 = var1,
+      var2 = var2,
+      var3 = var3,
+      var4 = var4,
+      mmu = mmu,
+      smu = smu,
+      stheta = stheta,
+      a = a,
+      b = b
+    )
+
+    # Choose the parameters to watch
+    modelParameters <- c(
+      "b1", "b2", "b3", "b4", "lambda", "beta1", "beta2", "beta3", "beta4", "sy", "muall", "int"
+    )
+
+  }
 
   # Run the model
   modelRun <- jags(
@@ -108,423 +415,5 @@ josseJags <- function(data, mmu, smu, sg, se, slambda, a, b, nthin = 1, nburnin 
   )
 
   return(modelRun)
-}
 
-#' @export
-crossaJags <- function(data, mmu, smu, mug, mue, stheta, a, b, nthin = 1, nburnin = 2000){
-
-  # from data
-  Y <- data$y
-  I <- data$I
-  J <- data$J
-  Q <- data$Q
-  N <- I*J
-  genotype <- data$x[, "g"]
-  environment <- data$x[, "e"]
-
-  modelCode <- "
-  model
-  {
-  # Likelihood
-   for (k in 1:N) {
-    Y[k] ~ dnorm(mu[k], sy^-2)
-    mu[k] = muall + g[genotype[k]] + e[environment[k]] + blin[k]
-    blin[k] = sum(lambda[1:Q] * gamma[genotype[k],1:Q] * delta[environment[k],1:Q])
-   }
-
-  # Priors
-  # Prior on grand mean
-   muall ~ dnorm(mmu, smu^-2)
-
-  # Prior on genotype effect
-  for(i in 1:I) {
-  g[i] ~ dnorm(mug, sg^-2) # Prior on genotype effect
-  }
-
-  # Prior on environment effect
-  for(j in 1:J) {
-  e[j] ~ dnorm(mue, se^-2) # Prior on environment effect
-  }
-
-
-  # Priors on gamma
-  for(q in 1:Q){
-    for(i in 1:(I-1)){
-      theta[i,q] ~ dnorm(0,stheta)
-    }
-    theta[I,q] = -sum(theta[1:(I-1),q])
-    thetaSum[q] = sqrt(sum(theta[1:I,q]^2)) + 0.000001
-    for(i in 1:I){
-      gamma[i,q] = theta[i,q]/thetaSum[q]
-    }
-  }
-
-  # Priors on delta
-   for(q in 1:Q){
-    for(j in 1:(J-1)){
-      aux[j,q] ~ dnorm(0,stheta)
-    }
-    aux[J,q] = -sum(aux[1:(J-1),q])
-    auxSum[q] = sqrt(sum(aux[1:J,q]^2)) + 0.000001
-    for(j in 1:J){
-      delta[j,q] = aux[j,q]/auxSum[q]
-    }
-  }
-
-  # Prior on eigenvalues
-  for(q in 1:Q) {
-    lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
-  }
-  lambda = sort(lambda_raw)
-
-  # Priors
-  sg ~ dt(0, 1, 1)T(0,)
-  se ~ dt(0, 1, 1)T(0,)
-  slambda ~ dt(0, 1, 1)T(0,)
-
-  # Prior on residual standard deviation
-   sy ~ dgamma(a, b) # inverse of sy
-  }
-  "
-
-  # Set up the data
-  modelData <- list(
-    N = N,
-    Y = Y,
-    I = I,
-    J = J,
-    Q = Q,
-    genotype = genotype,
-    environment = environment,
-    mmu = mmu,
-    smu = smu,
-    mug = mug,
-    mue = mue,
-    #mulambda = mulambda,
-    # sg = sg,
-    # se = se,
-    # slambda = slambda,
-    stheta = stheta,
-    a = a,
-    b = b
-  )
-
-  # Choose the parameters to watch
-  modelParameters <- c(
-    "g", "e", "lambda", "gamma", "delta", "sy", "muall", "blin"
-  )
-
-  # Run the model
-  modelRun <- jags(
-    data = modelData,
-    parameters.to.save = modelParameters,
-    model.file = textConnection(modelCode),
-    #progress.bar = "none",
-    n.thin = nthin,
-    n.burnin = nburnin,
-    n.iter = 2000 * nthin + nburnin
-  )
-
-  return(modelRun)
-}
-
-
-bammitJags <- function(data, mmu, smu, stheta, a, b,
-                       nthin = 1, nburnin = 2000){
-
-    # from data
-    Y <- data$y
-    I <- data$I
-    J <- data$J
-    K <- data$K
-    Q <- data$Q
-    N <- I*J*K
-    genotype <- data$x[, "g"]
-    environment <- data$x[, "e"]
-    time <- data$x[, "t"]
-
-  modelCode <- "
-  model
-  {
-  # Likelihood
-   for (n in 1:N) {
-    Y[n] ~ dnorm(mu[n], sy^-2)
-    mu[n] = muall + g[genotype[n]] + e[environment[n]] + t[time[n]] + blin[n]
-    blin[n] = sum(lambda[1:Q] * gamma[genotype[n],1:Q] * delta[environment[n],1:Q]*kappa[time[n],1:Q])
-   }
-
-  # Priors
-  # Prior on grand mean
-   muall ~ dnorm(mmu, smu^-2)
-
-  # Prior on genotype effect
-  for(i in 1:I) {
-  g[i] ~ dnorm(0, sg^-2) # Prior on genotype effect
-  }
-
-  # Prior on environment effect
-  for(j in 1:J) {
-  e[j] ~ dnorm(0, se^-2) # Prior on environment effect
-  }
-
-  # Prior on time effect
-  for(k in 1:K) {
-  t[k] ~ dnorm(0, st^-2) # Prior on time effect
-  }
-
-
-  # Priors on gamma
-  for(q in 1:Q){
-    for(i in 1:(I-1)){
-      theta[i,q] ~ dnorm(0,stheta)
-    }
-    theta[I,q] = -sum(theta[1:(I-1),q])
-    thetaSum[q] = sqrt(sum(theta[1:I,q]^2)) + 0.00001
-    for(i in 1:I){
-      gamma[i,q] = theta[i,q]/thetaSum[q]
-    }
-  }
-
-  # Priors on delta
-   for(q in 1:Q){
-    for(j in 1:(J-1)){
-      aux[j,q] ~ dnorm(0,stheta)
-    }
-    aux[J,q] = -sum(aux[1:(J-1),q])
-    auxSum[q] = sqrt(sum(aux[1:J,q]^2)) + 0.000001
-    for(j in 1:J){
-      delta[j,q] = aux[j,q]/auxSum[q]
-    }
-  }
-
-   # Priors on kappa
-   for(q in 1:Q){
-    for(k in 1:(K-1)){
-      thetaK[k,q] ~ dnorm(0,stheta)
-    }
-    thetaK[K,q] = -sum(thetaK[1:(K-1),q])
-    thetaKSum[q] = sqrt(sum(thetaK[1:K,q]^2)) + 0.000001
-    for(k in 1:K){
-      kappa[k,q] = thetaK[k,q]/thetaKSum[q]
-    }
-  }
-
-  # Prior on eigenvalues
-  for(q in 1:Q) {
-    lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
-  }
-  lambda = sort(lambda_raw)
-
-  # Priors
-  sg ~ dt(0, 1, 1)T(0,)
-  se ~ dt(0, 1, 1)T(0,)
-  st ~ dt(0, 1, 1)T(0,)
-  slambda ~ dt(0, 1, 1)T(0,)
-
-  # Prior on residual standard deviation
-   sy ~ dgamma(a, b) # inverse of sy
-  }
-  "
-
-  # Set up the data
-  modelData <- list(
-    N = N,
-    Y = Y,
-    I = I,
-    J = J,
-    K = K,
-    Q = Q,
-    genotype = genotype,
-    environment = environment,
-    time = time,
-    mmu = mmu,
-    smu = smu,
-    # mug = mug,
-    # mue = mue,
-    # mut = mut,
-    #mulambda = mulambda,
-    # sg = sg,
-    # se = se,
-    # st = st,
-    # slambda = slambda,
-    stheta = stheta,
-    a = a,
-    b = b
-  )
-
-  # Choose the parameters to watch
-  modelParameters <- c(
-    "g", "e", "t", "lambda", "gamma", "delta", "kappa", "sy", "muall", "blin"
-  )
-
-  # Run the model
-  modelRun <- jags(
-    data = modelData,
-    parameters.to.save = modelParameters,
-    model.file = textConnection(modelCode),
-    #progress.bar = "none",
-    n.thin = nthin,
-    n.burnin = nburnin,
-    n.iter = 2000 * nthin + nburnin
-  )
-
-  return(modelRun)
-}
-
-#' @export
-bammitJagsRealData <- function(data, Q = 2, mmu, smu, stheta, a, b,
-                       nthin = 1, nburnin = 2000){
-
-
-    # Q <- Q
-    # Y <- data$Mean
-    # K <- length(levels(data$Year))
-    # I <- length(levels(data$Genotype))
-    # J <- length(levels(data$Environment))
-    # N <- length(data$Mean)
-    #
-    # genotype <- data[, "Genotype"]
-    # environment <- data[, "Environment"]
-    # time <- data[, "Year"]
-
-  levels(data$Genotype) <-(1:length(levels(data$Genotype)))
-  levels(data$Environment) <- 1:length(levels(ireland$Environment))
-
-  Q <- Q
-  Y <- data$Mean
-  K <- length(levels(data$Year))
-  I <- length(levels(data$Genotype))
-  J <- length(levels(data$Environment))
-  N <- length(data$Mean)
-
-  genotype <- data[, "Genotype"]$Genotype
-  environment <- data[, "Environment"]$Environment
-  time <- data[, "Year"]$Year
-
-  modelCode <- "
-  model
-  {
-  # Likelihood
-   for (n in 1:N) {
-    Y[n] ~ dnorm(mu[n], sy^-2)
-    mu[n] = muall + g[genotype[n]] + e[environment[n]] + t[time[n]] + blin[n]
-    blin[n] = sum(lambda[1:Q] * gamma[genotype[n],1:Q] * delta[environment[n],1:Q]*kappa[time[n],1:Q])
-   }
-
-  # Priors
-  # Prior on grand mean
-   muall ~ dnorm(mmu, smu^-2)
-
-  # Prior on genotype effect
-  for(i in 1:I) {
-  g[i] ~ dnorm(0, sg^-2) # Prior on genotype effect
-  }
-
-  # Prior on environment effect
-  for(j in 1:J) {
-  e[j] ~ dnorm(0, se^-2) # Prior on environment effect
-  }
-
-  # Prior on time effect
-  for(k in 1:K) {
-  t[k] ~ dnorm(0, st^-2) # Prior on time effect
-  }
-
-
-  # Priors on gamma
-  for(q in 1:Q){
-    for(i in 1:(I-1)){
-      theta[i,q] ~ dnorm(0,stheta)
-    }
-    theta[I,q] = -sum(theta[1:(I-1),q])
-    thetaSum[q] = sqrt(sum(theta[1:I,q]^2)) + 0.00001
-    for(i in 1:I){
-      gamma[i,q] = theta[i,q]/thetaSum[q]
-    }
-  }
-
-  # Priors on delta
-   for(q in 1:Q){
-    for(j in 1:(J-1)){
-      aux[j,q] ~ dnorm(0,stheta)
-    }
-    aux[J,q] = -sum(aux[1:(J-1),q])
-    auxSum[q] = sqrt(sum(aux[1:J,q]^2)) + 0.000001
-    for(j in 1:J){
-      delta[j,q] = aux[j,q]/auxSum[q]
-    }
-  }
-
-   # Priors on kappa
-   for(q in 1:Q){
-    for(k in 1:(K-1)){
-      thetaK[k,q] ~ dnorm(0,stheta)
-    }
-    thetaK[K,q] = -sum(thetaK[1:(K-1),q])
-    thetaKSum[q] = sqrt(sum(thetaK[1:K,q]^2)) + 0.000001
-    for(k in 1:K){
-      kappa[k,q] = thetaK[k,q]/thetaKSum[q]
-    }
-  }
-
-  # Prior on eigenvalues
-  for(q in 1:Q) {
-    lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
-  }
-  lambda = sort(lambda_raw)
-
-  # Priors
-  sg ~ dt(0, 1, 1)T(0,)
-  se ~ dt(0, 1, 1)T(0,)
-  st ~ dt(0, 1, 1)T(0,)
-  slambda ~ dt(0, 1, 1)T(0,)
-
-  # Prior on residual standard deviation
-   sy ~ dgamma(a, b) # inverse of sy
-  }
-  "
-
-  # Set up the data
-  modelData <- list(
-    N = N,
-    Y = Y,
-    I = I,
-    J = J,
-    K = K,
-    Q = Q,
-    genotype = genotype,
-    environment = environment,
-    time = time,
-    mmu = mmu,
-    smu = smu,
-    # mug = mug,
-    # mue = mue,
-    # mut = mut,
-    #mulambda = mulambda,
-    # sg = sg,
-    # se = se,
-    # st = st,
-    # slambda = slambda,
-    stheta = stheta,
-    a = a,
-    b = b
-  )
-
-  # Choose the parameters to watch
-  modelParameters <- c(
-    "g", "e", "t", "lambda", "gamma", "delta", "kappa", "sy", "muall", "blin"
-  )
-
-  # Run the model
-  modelRun <- jags(
-    data = modelData,
-    parameters.to.save = modelParameters,
-    model.file = textConnection(modelCode),
-    #progress.bar = "none",
-    n.thin = nthin,
-    n.burnin = nburnin,
-    n.iter = 2000 * nthin + nburnin
-  )
-
-  return(modelRun)
 }
