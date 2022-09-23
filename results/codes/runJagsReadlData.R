@@ -31,10 +31,10 @@ MCMCtrace(bammitModelRealData,
 
 
 
-test <- ireland %>%
-  group_by(Year, Genotype) %>%
-  summarise(mean = mean(Mean))
-test %>%  filter(Genotype == "g3") %>%
+test <- ireland |>
+  group_by(Year, Genotype, Environment) |>
+  summarise(mean = mean(Yield))
+test |> filter(Genotype == "g3")  |>
   ggplot(aes(x = Year, y = mean)) +
   geom_point() +
   geom_line(aes(x = Year, y = mean))

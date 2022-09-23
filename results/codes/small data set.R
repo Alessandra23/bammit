@@ -6,16 +6,52 @@ library(ggridges)
 
 ## Get a small data set of Ireland
 load("Real data/ireland.RData")
-years <- c("2018", "2019")
+years <- c("2019")
 irelandSmall <- ireland |> dplyr::filter(Year %in% years)
 irelandSmall$Year <- factor(irelandSmall$Year)
 irelandSmall$Genotype <- factor(irelandSmall$Genotype)
 irelandSmall$Environment <- factor(irelandSmall$Environment)
 
+trainirelandSmall <- subset(irelandSmall,  grepl('1$|2$', Bloc))
+                      # group_by(Genotype, Environment) |>
+                      # dplyr::summarise(Yield=mean(Yield))
+testirelandSmall <- subset(irelandSmall,  grepl('3$|4$', Bloc))
+
+# group_by(Genotype, Environment) |>
+                      # dplyr::summarise(Yield=mean(Yield))
+
+
+
+test <- ireland |> filter(Year == '2015') |>
+  group_by(Genotype, Environment) |>
+  summarise(Yield = mean(Yield))
+
+model_test <- AMMIJagsRealData(data = test, Q = 1, mmu = 10, smu = 2, stheta = 1, a = 0.1, b = 0.1,
+                               nthin = 1, nburnin = 2000)
+
+plot(model_test)
+
+ammi2015 <- AMMIJagsRealData(data = trainirelandSmall)
+predammi2015 <- predictionAMMITReal(model = ammi2015$BUGSoutput, data = testirelandSmall)
+RMSE(predammi2015, testirelandSmall$Yield)
+R2(predammi2015, testirelandSmall$Yield)
+
+
+#2010: 0.41
+#2011: 0.55
+#2013: 0.42
+#2014: 0.54
+#2016: 0.52
+#2017: 0.57
+#2018: 0.65
+#2019: 0.66
+
+
+# old ---------------------------------------------------------------------
 
 test <-  irelandSmall |>
   group_by(Genotype, Environment) |>
-  dplyr::summarise(mean=mean(Mean))
+  dplyr::summarise(mean=mean(Yield))
 
 test$mean  = test$mean - mean(test$mean)
 

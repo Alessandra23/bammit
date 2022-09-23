@@ -5,18 +5,18 @@ data <- ambarti
 
 
 # set up names
-features <- attributes(data$x)
+features <- attributes(ambarti$x)
 g_names <- colnames(features$contrasts$g)
 e_names <- colnames(features$contrasts$e)
 e <- rep(e_names, times = length(g_names))
 g <- rep(g_names, each = length(e_names))
 
 # get yhats
-yhat <- apply(data$y_hat, 2, median) # predict values for yhat
-yhatBart <- apply(data$y_hat_bart, 2, median) # predict values for bart
+yhat <- apply(ambarti$y_hat, 2, median) # predict values for yhat
+yhatBart <- apply(ambarti$y_hat_bart, 2, median) # predict values for bart
 
 # get sd
-yhatSD <-  apply(data$y_hat, 2, sd)
+yhatSD <-  apply(ambarti$y_hat, 2, sd)
 
 # create a df
 df.ambarti <- data.frame(yhatBart = yhatBart, yhat = yhat, e = e, g = g, sd = yhatSD)
@@ -39,9 +39,9 @@ limitsInt <- range(labeling::rpretty(intLims[1], intLims[2]))
 library(ggplot2)
 
 p_main <- ggplot(df.ambarti, aes(reorder(e, -fill), reorder(g, fill))) +
-  geom_tile(aes(fill = fill))# +
-#scale_y_discrete(breaks = breakPattern_g, labels = levels(reorder(g, fill))) +
-#scale_x_discrete(breaks =  breakPattern_e, labels = levels(reorder(e, -fill)))
+  geom_tile(aes(fill = fill)) +
+scale_y_discrete(breaks = breakPattern_g, labels = levels(reorder(g, fill))) +
+scale_x_discrete(breaks =  breakPattern_e, labels = levels(reorder(e, -fill)))
 
 intPal = rev(colorspace::diverging_hcl(palette = "Blue-Red 3", n = 100))
 lims <- intLims
@@ -68,14 +68,14 @@ p_main # original plot
 # -------------------------------------------------------------------------
 # plot vsup
 
-library(scales)
-library(tibble)
-library(dplyr)
-library(purrr)
-library(gtable)
-library(scales)
-library(purrr)
-library(grid)
+# library(scales)
+# library(tibble)
+# library(dplyr)
+# library(purrr)
+# library(gtable)
+# library(scales)
+# library(purrr)
+# library(grid)
 
 # you can change the max_desat, pow_desat, max_light, pow_light settings
 # to get something you like. but i think the default settings are good

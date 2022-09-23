@@ -1,46 +1,62 @@
 library(dplyr)
+library(R2jags)
 
 # simulate data -----------------------------------------------------------
 
 
-data <- simBAMMIT(V = 4,
-                  Q = 3,
-                  Bv = c(12,10, 4, 2),
+data <- simBAMMIT(V = 3,
+                  Q = 1,
+                  Bv = c(12,10, 2),
                   mu = 100,
-                  lambda = c(8,10, 12),
+                  lambda = c(12),
                   sb = 1,
                   sB = 1,
                   sy = 1)
-# N = B1*B2*...*Bv
-#saveRDS(data, file = "Simulated data/V4_Q3_N960_L81012.rds")
 
-# read the data
-
-V2_Q1_N120_L10 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V2_Q1_N120_L10.rds")
-V3_Q1_N480_L10 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V3_Q1_N480_L10.rds")
-V4_Q1_N960_L10 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V4_Q1_N960_L10.rds")
-V2_Q2_N120_L1012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V2_Q2_N120_L1012.rds")
-V3_Q2_N480_L1012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V3_Q2_N480_L1012.rds")
-V4_Q2_N960_L1012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V4_Q2_N960_L1012.rds")
-V2_Q3_N120_L81012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V2_Q3_N120_L81012.rds")
-V3_Q3_N480_L81012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V3_Q3_N480_L81012.rds")
-V4_Q3_N960_L81012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V4_Q3_N960_L81012.rds")
-
-# jags code ---------------------------------------------------------------
-
-data <- V2_Q1_N120_L10
 model <- bammitJags(data = data,
-                    Q = 2,
+                    Q = 1,
                     mmu = 100,
                     smu = 10,
                     a = 0.1,
                     b = 0.1,
                     nthin = 1,
-                    nburnin = 2000)
+                    nburnin = 500)
+# N = B1*B2*...*Bv
+#saveRDS(data, file = "Simulated data/V4_Q3_N960_L81012.rds")
 
-saveRDS(model, file = "Running models/V2_Q2_N960_L10.rds")
+# read the data
 
-plot(data$int, model$BUGSoutput$mean$int)
+V2_Q1_N120_L10 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V2_Q1_N120_L10.rds") # model 1
+V3_Q1_N480_L10 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V3_Q1_N480_L10.rds") # model 2
+V4_Q1_N960_L10 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V4_Q1_N960_L10.rds") # model 3
+V2_Q2_N120_L1012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V2_Q2_N120_L1012.rds") # model 4
+V3_Q2_N480_L1012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V3_Q2_N480_L1012.rds") # model 5
+V4_Q2_N960_L1012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V4_Q2_N960_L1012.rds") # model 6
+V2_Q3_N120_L81012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V2_Q3_N120_L81012.rds") # model 7
+V3_Q3_N480_L81012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V3_Q3_N480_L81012.rds") # model 8
+V4_Q3_N960_L81012 <- readRDS("~/Documents/GitHub/bammit/Simulated data/V4_Q3_N960_L81012.rds") # model 9
+
+# jags code ---------------------------------------------------------------
+
+data <- list(V2_Q1_N120_L10, V3_Q1_N480_L10, V4_Q1_N960_L10, V2_Q2_N120_L1012, V3_Q2_N480_L1012,
+             V4_Q2_N960_L1012 ,V2_Q3_N120_L81012,V3_Q3_N480_L81012,V4_Q3_N960_L81012
+)
+names(data) <- paste0("model", 1:9)
+
+
+lapply(1, function(i){
+  modelAux <- bammitJags(data = data[[i]],
+                         Q = 2,
+                         mmu = 100,
+                         smu = 10,
+                         a = 0.1,
+                         b = 0.1,
+                         nthin = 1,
+                         nburnin = 2000)
+  model <- modelAux$BUGSoutput
+  saveRDS(model, file = paste0("~/pineR/bammit/Running models/model", i, ".rds"))
+})
+
 
 
 # plots --------------------------------------------------------------

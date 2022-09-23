@@ -1,4 +1,5 @@
 library(readxl)
+library(stringr)
 loadRData <- function(fileName){
   load(fileName)
   get(ls()[ls() != "fileName"])
@@ -29,28 +30,26 @@ ireland <-  ireland |>
   select("Year", "Genotype", "Location", "Bloc", "yld_ton_ha") |>
   rename(Yield = yld_ton_ha, Environment = Location) |>
   mutate_at("Yield", as.numeric) |>
-  mutate_at(c("Year", "Genotype", "Environment"), as.factor)
-ireland$Bloc <-  substr(ireland$Bloc, start = -7)
+  mutate_at(c("Year", "Genotype", "Environment", 'Bloc'), as.factor)
+
+
+str(ireland)
+
 
 # Rename factor levels  to be anonymous
 levels(ireland$Genotype) <- paste0("g", 1:length(levels(ireland$Genotype)))
 levels(ireland$Environment) <- paste0("e", 1:length(levels(ireland$Environment)))
 
-# add env to block name and turns it into factor
-ireland$Bloc <- as.factor(paste0(ireland$Environment, ireland$Bloc))
-
-str(ireland)
-
-save(ireland, file = "Real data/ireland.RData")
-#saveRDS(ireland, file = "Real data/ireland.RDS")
-
-abc <- ireland |> filter(Year == "2010")
-
-# separate the data into train and test
-
+# separate the data set in train and test
 train <- subset(ireland,  grepl('1$|2$', Bloc))
 test <- subset(ireland,  grepl('3$|4$', Bloc))
 
+# add env to block name and turns it into factor
+train$Bloc <-  str_sub(train$Bloc, start= -7)
+train$Bloc <- as.factor(paste0(train$Environment, train$Bloc))
+
+test$Bloc <-  str_sub(test$Bloc, start= -7)
+test$Bloc <- as.factor(paste0(test$Environment, test$Bloc))
 
 save(train, file = "Real data/train_ireland.RData")
 save(test, file = "Real data/test_ireland.RData")

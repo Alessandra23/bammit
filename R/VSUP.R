@@ -10,7 +10,6 @@
 #' @importFrom purrr transpose
 #' @importFrom scales as.trans
 #' @importFrom grid is.grob
-#' @importFrom grid is.grob
 #'
 
 
@@ -27,7 +26,7 @@
 
 
 # -------------------------------------------------------------------------
-
+#' @export
 zip <- function(...) purrr::transpose(list(...))
 
 "%||%" <- function(a, b) if (!is.null(a)) a else b
@@ -55,8 +54,7 @@ train_bivariate <- function(new, existing = NULL) {
 
 
 
-#' @importFrom ggplot2 ggproto
-#' @export
+
 Range <- ggproto("Range", NULL,
                  range = NULL,
                  reset = function(self) {
@@ -548,14 +546,14 @@ guide_gengrob.colourfan <- function(guide, theme) {
   # this is where to change the legend tick positions
   tick.x.pos <- seq(0,1, length.out = 5)
   a <- c(0, .25, .5, .75, 1)
-  a <- rev(a)
+  a<- rev(a)
   #a <- a + 0.125
   tick.y.pos <- a
 
 
   label.x.pos <- transform_radial(tibble(x = tick.x.pos, y = 1), yoff = 0.04)
   label.y.pos <- transform_radial(tibble(x = 1, y = tick.y.pos),
-                                  # yoff = 0,
+                                 # yoff = 0,
                                   xoff = 0.04)
 
   # get the label theme

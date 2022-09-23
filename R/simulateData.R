@@ -41,9 +41,9 @@ simBAMMIT <- function(V = 3,
 
   # generate main effects
   bv <- lapply(Bv, function(x) {
-    bv <- rnorm(x, 0, sb)
-    bv <- bv - mean(bv)
-    return(bv)
+    bvaux <- rnorm(x, 0, sb)
+    bvF <- bvaux - mean(bvaux)
+    return(bvF)
   })
   #names(bv) <- paste0("b", 1:length(Bv))
 
@@ -76,3 +76,60 @@ simBAMMIT <- function(V = 3,
               Bv = Bv))
 
 }
+
+
+#' Generate data sets
+#' @export
+genDataSets <- function(Bv,Q, base_dir = '~/Documents/GitHub/bammit/Simulated data/test/'){
+
+  if(Q == 1){
+    lambda = 10
+  }
+
+  if(Q == 2){
+    lambda = c(8,10)
+  }
+
+  if(Q == 3){
+    lambda = c(8,10, 12)
+  }
+
+  V <- length(Bv)
+  N <- Reduce('*', Bv)
+
+
+  data <- simBAMMIT(V = V,
+                    Q = Q,
+                    Bv = Bv,
+                    mu = 100,
+                    lambda = lambda,
+                    sb = 1,
+                    sB = 1,
+                    sy = 1)
+  fileName <- paste0(base_dir, 'V', V, 'N', N, 'Q' , Q, '.rds')
+  saveRDS(data, file = fileName)
+
+}
+
+#' Run the simulated data
+#' @export
+runModel <- function(data, Q, base_dir = '~/Documents/GitHub/bammit/Running models/'){
+
+  V <- length(data$Bv)
+  N <- Reduce('*', data$Bv)
+
+  modelAux <- bammitJags(data = data,
+                         Q = Q,
+                         mmu = 100,
+                         smu = 10,
+                         a = 0.1,
+                         b = 0.1,
+                         nthin = 2,
+                         nburnin = 2000)
+
+  model <- modelAux$BUGSoutput
+  fileName <- paste0(base_dir, 'model', 'V', V, 'N', N, 'Q' , Q, '.rds')
+  saveRDS(model, file = fileName)
+
+}
+

@@ -1,6 +1,6 @@
 #' Jags code BAMMIT model
-#' @description A Jags code to estimated the parameters of AMMI model followuing Josse's approach
-#' @param data A list containing the simulated values of y, the values of I, J, and Q and a mtrix od g and e.
+#' @description A Jags code to estimated the parameters of BAMMIT model
+#' @param data A list containing the variables y and Bv.
 #' @param mmu Mean of the grand mean
 #' @param smu sd of grand mean
 #' @param Q number of components of interaction term
@@ -416,4 +416,577 @@ bammitJags <- function(data, Q, mmu, smu, a,b, stheta = 1, nthin, nburnin){
 
   return(modelRun)
 
+}
+
+#' Jags code BAMMIT model
+#' @description A Jags code to estimated the parameters of BAMMIT model
+#' @param data A data frame containing the columns Yield, Genotype, Environment, Year and Block
+#' @param mmu Mean of the grand mean
+#' @param smu sd of grand mean
+#' @param Q number of components of interaction term
+#' @param a shape parameter of a Gamma distribution
+#' @param b scale parameter of a Gamma distribution
+#' @param nthin thinning rate
+#' @param nburnin length of burn in
+#' @return The output of Jags function
+#' @export
+#' @importFrom R2jags 'jags'
+#'
+bammitJagsRealData <- function(data, Q = 1, mmu = 10, smu = 2, stheta = 1, a = 0.1, b = 0.1,
+                               nthin = 1, nburnin = 2000){
+
+  Q <- Q
+  Y <- data$Yield
+  K <- length(levels(unique(data$Year)))
+  I <- length(levels(unique(data$Genotype)))
+  J <- length(levels(unique(data$Environment)))
+  B <- length(levels(unique(data$Bloc)))
+  N <- length(data$Yield)
+
+  genotype <- data$Genotype
+  environment <- data$Environment
+  time <- data$Year
+  bloc <- data$Bloc
+
+  modelCode <- "
+  model
+  {
+  # Likelihood
+   for (n in 1:N) {
+    Y[n] ~ dnorm(mu[n], sy)
+    mu[n] = muall + g[genotype[n]] + e[environment[n]] + t[time[n]] + bl[bloc[n]] + blin[n]
+    blin[n] = sum(lambda[1:Q] * gamma[genotype[n],1:Q] * delta[environment[n],1:Q] * rho[time[n], 1:Q] * kappa[bloc[n], 1:Q])
+   }
+
+  # Priors
+  # Prior on grand mean
+   muall ~ dnorm(mmu, smu^-2)
+
+  # Prior on genotype effect
+  for(i in 1:I) {
+  g[i] ~ dnorm(0, sg^-2) # Prior on genotype effect
+  }
+
+  # Prior on environment effect
+  for(j in 1:J) {
+  e[j] ~ dnorm(0, se^-2) # Prior on environment effect
+  }
+
+  # Prior on time effect
+  for(k in 1:K) {
+  t[k] ~ dnorm(0, st^-2) # Prior on time effect
+  }
+
+   # Prior on bloc effect
+  for(l in 1:B) {
+  bl[l] ~ dnorm(0, sb^-2) # Prior on time effect
+  }
+
+   # Priors on gamma
+  for(q in 1:Q){
+    for(i in 1:I){
+      thetaG[i,q] ~ dnorm(0,stheta)
+    }
+    mG[q] = sum(thetaG[1:I,q])/I
+    for(i in 1:I){
+    thetaGNew[i,q] = thetaG[i,q] - mG[q]
+    }
+    sqrtThetaG[q] = sqrt(1/(sum(thetaGNew[1:I,q]^2 + 0.000001)))
+    for(i in 1:I){
+      gamma[i,q] = thetaGNew[i,q]*sqrtThetaG[q]
+    }
+  }
+
+   # Priors on delta
+   for(q in 1:Q){
+    for(j in 1:J){
+      thetaD[j,q] ~ dnorm(0,stheta)
+    }
+    mD[q] = sum(thetaD[1:J,q])/J
+    for(j in 1:J){
+    thetaDNew[j,q] = thetaD[j,q] - mD[q]
+    }
+    sqrtThetaD[q] = sqrt(1/(sum(thetaDNew[1:J,q]^2+ 0.000001)))
+    for(j in 1:J){
+      delta[j,q] = thetaDNew[j,q]*sqrtThetaD[q]
+    }
+  }
+
+   # Priors on rho
+   for(q in 1:Q){
+    for(k in 1:K){
+      thetaK[k,q] ~ dnorm(0,stheta)
+    }
+    mK[q] = sum(thetaK[1:K,q])/K
+    for(k in 1:K){
+    thetaKNew[k,q] = thetaK[k,q] - mK[q]
+    }
+    sqrtThetaK[q] = sqrt(1/(sum(thetaKNew[1:K,q]^2+ 0.000001)))
+    for(k in 1:K){
+      rho[k,q] = thetaKNew[k,q]*sqrtThetaK[q]
+    }
+   }
+
+
+   # Priors on kappa
+   for(q in 1:Q){
+    for(l in 1:B){
+      thetaB[l,q] ~ dnorm(0,stheta)
+    }
+    mB[q] = sum(thetaB[1:B,q])/B
+    for(l in 1:B){
+    thetaBNew[l,q] = thetaB[l,q] - mB[q]
+    }
+    sqrtThetaB[q] = sqrt(1/(sum(thetaBNew[1:B,q]^2+ 0.000001)))
+    for(l in 1:B){
+      kappa[l,q] = thetaBNew[l,q]*sqrtThetaB[q]
+    }
+  }
+
+  # Prior on eigenvalues
+  for(q in 1:Q) {
+    lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
+  }
+  lambda = sort(lambda_raw)
+
+  #Priors
+  sg ~ dt(0, 1, 1)T(0,)
+  se ~ dt(0, 1, 1)T(0,)
+  st ~ dt(0, 1, 1)T(0,)
+  sb ~ dt(0, 1, 1)T(0,)
+  slambda ~ dt(0, 1, 1)T(0,)
+
+  # Prior on residual standard deviation
+   sy ~ dgamma(a, b) # inverse of sy
+  }
+  "
+
+  # Set up the data
+  modelData <- list(
+    N = N,
+    Y = Y,
+    I = I,
+    J = J,
+    K = K,
+    B = B,
+    Q = Q,
+    genotype = genotype,
+    environment = environment,
+    time = time,
+    bloc = bloc,
+    mmu = mmu,
+    smu = smu,
+    # mug = mug,
+    # mue = mue,
+    # mut = mut,
+    #mulambda = mulambda,
+    # sg = sg,
+    # se = se,
+    # st = st,
+    # slambda = slambda,
+    stheta = stheta,
+    a = a,
+    b = b
+  )
+
+  # Choose the parameters to watch
+  modelParameters <- c(
+    "g", "e", "t", "bl", "lambda", "gamma", "delta", "rho", "kappa","sy", "muall", "blin"
+  )
+
+  # Run the model
+  modelRun <- jags(
+    data = modelData,
+    parameters.to.save = modelParameters,
+    model.file = textConnection(modelCode),
+    #progress.bar = "none",
+    n.thin = nthin,
+    n.burnin = nburnin,
+    n.iter = 2000 * nthin + nburnin
+  )
+
+  return(modelRun)
+}
+
+#' Jags code AR BAMMIT model
+#' @description A Jags code to estimated the parameters of AR BAMMIT model
+#' @param data A data frame containing the columns Yield, Genotype, Environment, Year and Block
+#' @param mmu Mean of the grand mean
+#' @param smu sd of grand mean
+#' @param Q number of components of interaction term
+#' @param a shape parameter of a Gamma distribution
+#' @param b scale parameter of a Gamma distribution
+#' @param nthin thinning rate
+#' @param nburnin length of burn in
+#' @return The output of Jags function
+#' @export
+#' @importFrom R2jags 'jags'
+arbammitJagsRealData <- function(data, Q = 1, mmu = 10, smu = 2, stheta = 1, a = 0.1, b = 0.1,
+                                 nthin = 1, nburnin = 2000){
+
+
+  # Q <- Q
+  # Y <- data$Mean
+  # K <- length(levels(data$Year))
+  # I <- length(levels(data$Genotype))
+  # J <- length(levels(data$Environment))
+  # N <- length(data$Mean)
+  #
+  # genotype <- data[, "Genotype"]
+  # environment <- data[, "Environment"]
+  # time <- data[, "Year"]
+
+  # levels(data$Genotype) <-(1:length(levels(data$Genotype)))
+  # levels(data$Environment) <- 1:length(levels(data$Environment))
+  # levels(data$Year) <- 1:length(levels(data$Year))
+  # levels(data$Bloc) <- 1:length(levels(data$Bloc))
+
+  Q <- Q
+  Y <- data$Yield
+  K <- length(levels(data$Year))
+  I <- length(levels(data$Genotype))
+  J <- length(levels(data$Environment))
+  B <- length(levels(data$Bloc))
+  N <- length(data$Yield)
+
+  genotype <- data$Genotype
+  environment <- data$Environment
+  time <- data$Year
+  bloc <- data$Bloc
+
+  modelCode <- "
+  model
+  {
+  # Likelihood
+   for (n in 1:N) {
+    Y[n] ~ dnorm(mu[n], sy)
+    mu[n] = muall + g[genotype[n]] + e[environment[n]] + t[time[n]] + bl[bloc[n]] + blin[n]
+    blin[n] = sum(lambda[1:Q] * gamma[genotype[n],1:Q] * delta[environment[n],1:Q] * rho[time[n], 1:Q] * kappa[bloc[n], 1:Q])
+   }
+
+  # Priors
+  # Prior on grand mean
+   muall ~ dnorm(mmu, smu^-2)
+
+  # Prior on genotype effect
+  for(i in 1:I) {
+  g[i] ~ dnorm(0, sg^-2) # Prior on genotype effect
+  }
+
+  # Prior on environment effect
+  for(j in 1:J) {
+  e[j] ~ dnorm(0, se^-2) # Prior on environment effect
+  }
+
+  # Prior on time effect
+ tt[1] ~ dnorm(0,1)
+  for(k in 1:K){
+    alpha[k] ~ dunif(-1,1)
+  }
+  for (k in 2:K) {
+    muk[k] = alpha[k] * tt[k-1]
+    tt[k] ~ dnorm(muk[k], st)
+  }
+
+  mut = sum(tt)/K
+
+  for(k in 1:K){
+    t[k] = tt[k] - mut
+  }
+
+   # Prior on bloc effect
+  for(l in 1:B) {
+  bl[l] ~ dnorm(0, sb^-2) # Prior on time effect
+  }
+
+   # Priors on gamma
+  for(q in 1:Q){
+    for(i in 1:I){
+      thetaG[i,q] ~ dnorm(0,stheta)
+    }
+    mG[q] = sum(thetaG[1:I,q])/I
+    for(i in 1:I){
+    thetaGNew[i,q] = thetaG[i,q] - mG[q]
+    }
+    sqrtThetaG[q] = sqrt(1/(sum(thetaGNew[1:I,q]^2 + 0.000001)))
+    for(i in 1:I){
+      gamma[i,q] = thetaGNew[i,q]*sqrtThetaG[q]
+    }
+  }
+
+   # Priors on delta
+   for(q in 1:Q){
+    for(j in 1:J){
+      thetaD[j,q] ~ dnorm(0,stheta)
+    }
+    mD[q] = sum(thetaD[1:J,q])/J
+    for(j in 1:J){
+    thetaDNew[j,q] = thetaD[j,q] - mD[q]
+    }
+    sqrtThetaD[q] = sqrt(1/(sum(thetaDNew[1:J,q]^2+ 0.000001)))
+    for(j in 1:J){
+      delta[j,q] = thetaDNew[j,q]*sqrtThetaD[q]
+    }
+  }
+
+   # Priors on rho
+   for(q in 1:Q){
+    thetaK[1,q] ~ dnorm(0,1)
+   }
+
+   for(q in 1:Q){
+   for(k in 1:K){
+     # phiK[k,q] ~ dnorm(0,1)
+     phiK[k,q] ~ dunif(-1,1)
+   }
+    for(k in 2:K){
+      thetaK[k,q] ~ dnorm(phiK[k,q] * thetaK[k-1,q], stheta)
+    }
+    mK[q] = sum(thetaK[1:K,q])/K
+    for(k in 1:K){
+    thetaKNew[k,q] = thetaK[k,q] - mK[q]
+    }
+    sqrtThetaK[q] = sqrt(1/(sum(thetaKNew[1:K,q]^2+ 0.000001)))
+    for(k in 1:K){
+      rho[k,q] = thetaKNew[k,q]*sqrtThetaK[q]
+    }
+  }
+
+
+   # Priors on kappa
+   for(q in 1:Q){
+    for(l in 1:B){
+      thetaB[l,q] ~ dnorm(0,stheta)
+    }
+    mB[q] = sum(thetaB[1:B,q])/B
+    for(l in 1:B){
+    thetaBNew[l,q] = thetaB[l,q] - mB[q]
+    }
+    sqrtThetaB[q] = sqrt(1/(sum(thetaBNew[1:B,q]^2+ 0.000001)))
+    for(l in 1:B){
+      kappa[l,q] = thetaBNew[l,q]*sqrtThetaB[q]
+    }
+  }
+
+  # Prior on eigenvalues
+  for(q in 1:Q) {
+    lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
+  }
+  lambda = sort(lambda_raw)
+
+  #Priors
+  sg ~ dt(0, 1, 1)T(0,)
+  se ~ dt(0, 1, 1)T(0,)
+  st ~ dt(0, 1, 1)T(0,)
+  sb ~ dt(0, 1, 1)T(0,)
+  slambda ~ dt(0, 1, 1)T(0,)
+
+  # Prior on residual standard deviation
+   sy ~ dgamma(a, b) # inverse of sy
+  }
+  "
+
+  # Set up the data
+  modelData <- list(
+    N = N,
+    Y = Y,
+    I = I,
+    J = J,
+    K = K,
+    B = B,
+    Q = Q,
+    genotype = genotype,
+    environment = environment,
+    time = time,
+    bloc = bloc,
+    mmu = mmu,
+    smu = smu,
+    # mug = mug,
+    # mue = mue,
+    # mut = mut,
+    #mulambda = mulambda,
+    # sg = sg,
+    # se = se,
+    # st = st,
+    # slambda = slambda,
+    stheta = stheta,
+    a = a,
+    b = b
+  )
+
+  # Choose the parameters to watch
+  modelParameters <- c(
+    "g", "e", "t", "bl", "lambda", "gamma", "delta", "rho", "kappa","sy", "muall", "blin"
+  )
+
+  # Run the model
+  modelRun <- jags(
+    data = modelData,
+    parameters.to.save = modelParameters,
+    model.file = textConnection(modelCode),
+    #progress.bar = "none",
+    n.thin = nthin,
+    n.burnin = nburnin,
+    n.iter = 2000 * nthin + nburnin
+  )
+
+  return(modelRun)
+}
+
+#' Jags code AMMI model
+#' @description A Jags code to estimated the parameters of AMMITmodel
+#' @param data A data frame containing the columns Yield, Genotype and Environment
+#' @param mmu Mean of the grand mean
+#' @param smu sd of grand mean
+#' @param Q number of components of interaction term
+#' @param a shape parameter of a Gamma distribution
+#' @param b scale parameter of a Gamma distribution
+#' @param nthin thinning rate
+#' @param nburnin length of burn in
+#' @return The output of Jags function
+#' @export
+#' @importFrom R2jags 'jags'
+AMMIJagsRealData <- function(data, Q = 1, mmu = 10, smu = 2, stheta = 1, a = 0.1, b = 0.1,
+                             nthin = 1, nburnin = 2000){
+
+
+  # Q <- Q
+  # Y <- data$Mean
+  # K <- length(levels(data$Year))
+  # I <- length(levels(data$Genotype))
+  # J <- length(levels(data$Environment))
+  # N <- length(data$Mean)
+  #
+  # genotype <- data[, "Genotype"]
+  # environment <- data[, "Environment"]
+  # time <- data[, "Year"]
+
+  # levels(data$Genotype) <-(1:length(levels(data$Genotype)))
+  # levels(data$Environment) <- 1:length(levels(data$Environment))
+  # levels(data$Year) <- 1:length(levels(data$Year))
+  # levels(data$Bloc) <- 1:length(levels(data$Bloc))
+
+  Q <- Q
+  Y <- data$Yield
+  I <- length(levels(data$Genotype))
+  J <- length(levels(data$Environment))
+  N <- length(data$Yield)
+
+  genotype <- data$Genotype
+  environment <- data$Environment
+
+  modelCode <- "
+  model
+  {
+  # Likelihood
+   for (n in 1:N) {
+    Y[n] ~ dnorm(mu[n], sy)
+    mu[n] = muall + g[genotype[n]] + e[environment[n]] + blin[n]
+    blin[n] = sum(lambda[1:Q] * gamma[genotype[n],1:Q] * delta[environment[n],1:Q])
+   }
+
+  # Priors
+  # Prior on grand mean
+   muall ~ dnorm(mmu, smu^-2)
+
+  # Prior on genotype effect
+  for(i in 1:I) {
+  g[i] ~ dnorm(0, sg^-2) # Prior on genotype effect
+  }
+
+  # Prior on environment effect
+  for(j in 1:J) {
+  e[j] ~ dnorm(0, se^-2) # Prior on environment effect
+  }
+
+
+   # Priors on gamma
+  for(q in 1:Q){
+    for(i in 1:I){
+      thetaG[i,q] ~ dnorm(0,stheta)
+    }
+    mG[q] = sum(thetaG[1:I,q])/I
+    for(i in 1:I){
+    thetaGNew[i,q] = thetaG[i,q] - mG[q]
+    }
+    sqrtThetaG[q] = sqrt(1/(sum(thetaGNew[1:I,q]^2 + 0.000001)))
+    for(i in 1:I){
+      gamma[i,q] = thetaGNew[i,q]*sqrtThetaG[q]
+    }
+  }
+
+   # Priors on delta
+   for(q in 1:Q){
+    for(j in 1:J){
+      thetaD[j,q] ~ dnorm(0,stheta)
+    }
+    mD[q] = sum(thetaD[1:J,q])/J
+    for(j in 1:J){
+    thetaDNew[j,q] = thetaD[j,q] - mD[q]
+    }
+    sqrtThetaD[q] = sqrt(1/(sum(thetaDNew[1:J,q]^2+ 0.000001)))
+    for(j in 1:J){
+      delta[j,q] = thetaDNew[j,q]*sqrtThetaD[q]
+    }
+  }
+
+
+
+  # Prior on eigenvalues
+  for(q in 1:Q) {
+    lambda_raw[q] ~ dnorm(0, slambda^-2)T(0,)
+  }
+  lambda = sort(lambda_raw)
+
+  #Priors
+  sg ~ dt(0, 1, 1)T(0,)
+  se ~ dt(0, 1, 1)T(0,)
+  slambda ~ dt(0, 1, 1)T(0,)
+
+  # Prior on residual standard deviation
+   sy ~ dgamma(a, b) # inverse of sy
+  }
+  "
+
+  # Set up the data
+  modelData <- list(
+    N = N,
+    Y = Y,
+    I = I,
+    J = J,
+    Q = Q,
+    genotype = genotype,
+    environment = environment,
+    mmu = mmu,
+    smu = smu,
+    # mug = mug,
+    # mue = mue,
+    # mut = mut,
+    #mulambda = mulambda,
+    # sg = sg,
+    # se = se,
+    # st = st,
+    # slambda = slambda,
+    stheta = stheta,
+    a = a,
+    b = b
+  )
+
+  # Choose the parameters to watch
+  modelParameters <- c(
+    "g", "e",  "lambda", "gamma", "delta","sy", "muall", "blin"
+  )
+
+  # Run the model
+  modelRun <- jags(
+    data = modelData,
+    parameters.to.save = modelParameters,
+    model.file = textConnection(modelCode),
+    #progress.bar = "none",
+    n.thin = nthin,
+    n.burnin = nburnin,
+    n.iter = 2000 * nthin + nburnin
+  )
+
+  return(modelRun)
 }
