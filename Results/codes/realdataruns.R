@@ -26,3 +26,12 @@ trainQ1ar$BUGSoutput$median$blin
 predRar <- predictionBAMMITReal(trainQ1ar$BUGSoutput, test)
 RMSE(predRar, test$Yield)
 
+
+
+# Read the data -----------------------------------------------------------
+
+rd <- readRDS("/Users/alessalemos/Documents/GitHub/bammit/Running models/trainQ1.rds")
+pred_rd <- predictionBAMMITReal(rd$BUGSoutput, test)
+caret::RMSE(pred_rd, test$Yield)
+caret::R2(pred_rd, test$Yield)
+

@@ -15,5 +15,5 @@ predictionBAMMITReal(model, data)
 A vector of predicted values of the response variable.
 }
 \description{
-A function to calculate the predicted values of a BAMMIT model from a JAGS
+A function to calculate the predicted values of a BAMMIT model from a JAGS object
 }

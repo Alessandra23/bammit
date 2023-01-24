@@ -1,0 +1,2 @@
+load("/Users/alessalemos/Documents/GitHub/bammit/Running models/trainQ1.rds")
+load("/Users/alessalemos/Documents/GitHub/bammit/Running models/modelAmbartiByYear.rds")

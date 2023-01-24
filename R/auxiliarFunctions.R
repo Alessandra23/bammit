@@ -9,19 +9,6 @@ RMSE <- function(true, predicted){
   sqrt(mean(((true - predicted))^2))
 }
 
-#' R2
-#' @description A function to calculate the R2.
-#' @param true A vector of the true values of the response variable.
-#' @param predicted A vector of the predicted values of the response variable.
-#' @return A number.
-#' @export
-#'
-R2 <- function(pred, obs){
-  yobshat <- mean(obs)
-  R2 <- 1 - (sum((obs - pred)^2)/sum((obs - yobshat)^2))
-  return(R2)
-}
-
 #' Predicted values of BAMMIT model
 #' @description A function to calculate the predicted values of a BAMMIT model from a JAGS object
 #' @param model A object from Jags model
@@ -114,7 +101,6 @@ predictionBAMMITReal <- function(model, data) {
   N <- length(data$Yield)
   yhat <- rep(muhat, N) + g[genotype] + e[environment] + t[time] + bl[bloc]  +  inthat
 
-
   return(yhat)
 }
 
@@ -125,7 +111,45 @@ predictionBAMMITReal <- function(model, data) {
 #' @return A vector of predicted values of the response variable.
 #' @export
 #'
-predictionAMMIReal <- function(model, data) {
+predictionAMMIReal <- function(model, data){#train_data, test_data) {
+
+  # x <- test_data[,c('Genotype', 'Environment')]
+  # colnames(x) <- c('genotype', 'environment')
+  #
+  # muhat <- model$BUGSoutput$mean$muall
+  # g_aux <- model$BUGSoutput$mean$g
+  # e_aux <- model$BUGSoutput$mean$e
+  #
+  # names(g_aux) <- levels(train_data$Genotype)
+  # names(e_aux) <- levels(train_data$Environment)
+  #
+  #
+  # g <- rep(0,length(levels(x$genotype)))
+  # names(g) <- levels(x$genotype)
+  # g[names(g) %in% names(g_aux)] <- g_aux
+  #
+  # e <- rep(0,length(levels(x$environment)))
+  # names(e) <- levels(x$environment)
+  # e[names(e) %in% names(e_aux)] <- e_aux
+  #
+  # inthat_aux <- model$BUGSoutput$mean$blin
+  # inthat_aux <- matrix(inthat_aux, ncol = length(g_aux), nrow = length(e_aux))
+  # colnames(inthat_aux) <- levels(train_data$Genotype)
+  # rownames(inthat_aux) <- levels(train_data$Environment)
+  #
+  # inthat <- matrix(0, ncol = length(levels(x$genotype)), nrow = length(levels(x$environment)))
+  # colnames(inthat) <- levels(x$genotype)
+  # rownames(inthat) <- levels(x$environment)
+  # inthat[rownames(inthat_aux), colnames(inthat_aux)] <- inthat_aux
+  #
+  # df <- reshape2::melt(inthat)
+  # names(df) <- c('environment', 'genotype', 'int')
+  # df <- plyr::join(x, df)
+  #
+  # N <- length(test_data$Yield)
+  # yhat <- rep(muhat, N) + g[df[,'genotype']]  + e[df[,'environment']]  +  df[,'int']
+  #
+  # return(as.vector(yhat))
 
 
   genotype <- data$Genotype
@@ -137,10 +161,10 @@ predictionAMMIReal <- function(model, data) {
   inthat <- model$mean$blin
 
   N <- length(data$Yield)
-  yhat <- rep(muhat, N) + g[genotype] + e[environment]  +  inthat
-
+  yhat <- rep(muhat, N) + g[genotype] + e[environment] +  inthat
 
   return(yhat)
+
 }
 
 #' @export
@@ -149,7 +173,6 @@ loadRData <- function(fileName){
   load(fileName)
   get(ls()[ls() != "fileName"])
 }
-
 
 #' Tranform list of data into data set
 #' @export
@@ -208,4 +231,46 @@ transdat <- function(data){
 
   return(dat)
 
+}
+
+
+#' @export
+classical_AMMI <- function(data, Q){
+
+  y <- data$y
+
+  g = data$g
+  e = data$e
+
+
+  # Fit the linear model
+  linear_mod = aov(y ~ g + e + g:e)
+  # linear_mod = lm(y_train ~ g + e)
+
+  # Get the residuals for the interaction g:e
+  #interaction_tab = matrix(residuals(linear_mod), ncol = length(unique(g)), length(unique(env)))
+  interaction_tab = model.tables(linear_mod, type='effects', cterms = 'g:e')
+  interaction_tab = interaction_tab$tables$`g:e`
+
+  # Get the number of PCs
+  if (is.null(data$Q) == FALSE) {Q = data$Q}
+
+  # Run the Singular Value Decomposition (SVD) to compute lambda, gamma, and delta
+  sv_dec <- svd(interaction_tab, nu = Q, nv = Q)
+
+  # Get parameter estimates
+  # mu_hat     = linear_mod$coefficients[1] # slightly biased compared to mean(y_train)
+  mu_hat     = mean(y)
+  g_hat      = aggregate(x = y - mu_hat, by = list(g), FUN = "mean")[,2]
+  e_hat      = aggregate(x = y - mu_hat, by = list(e), FUN = "mean")[,2]
+  lambda_hat = sv_dec$d[1:Q]
+  gamma_hat  = -1*sv_dec$u
+  delta_hat  = -1*sv_dec$v
+
+  return(list(mu_hat     = mu_hat,
+              g_hat      = g_hat,
+              e_hat      = e_hat,
+              lambda_hat = lambda_hat,
+              gamma_hat  = gamma_hat,
+              delta_hat  = delta_hat))
 }
