@@ -82,6 +82,8 @@ qqplot(data$a[,1], modelJags$BUGSoutput$sims.list$a[,,1]);
 abline(0,1)
 
 
+modelJags$BUGSoutput$mean$a[,1]^2 |> sum()
+
 dat <- data.frame(
   x = c(1,2,3,4,5),
   y = c(10,9,8,7,6),

@@ -15,13 +15,13 @@
 
 
 
-# library(grid)
-# library(scales)
-# library(tibble)
-# library(purrr)
-# library(gtable)
-# library(reshape2)
-# library(ggplot2)
+library(grid)
+library(scales)
+library(tibble)
+library(purrr)
+library(gtable)
+library(reshape2)
+library(ggplot2)
 
 
 

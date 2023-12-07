@@ -67,6 +67,59 @@ simBAMMIT <- function(V = 3,
 
   # generate y
   m <- mu + meff + int
+  y <- rnorm(N, m, sy[])
+
+  return(list(mu = mu,
+              bv = bv,
+              int = int,
+              y = y,
+              Bv = Bv))
+
+}
+
+
+
+#' Simulate data BAMMIT
+#' @export
+simBAMMIT_li <- function(V = 3,
+                      Q = 1,
+                      Bv = c(3,2,2),
+                      mu = 100,
+                      lambda = c(10),
+                      sb = 1,
+                      sB = 10,
+                      sy = 1){
+
+  N <- Reduce("*", Bv)
+
+  # generate main effects
+  bv <- lapply(Bv, function(x) {
+    bvaux <- rnorm(x, 0, sb)
+    bvF <- bvaux - mean(bvaux)
+    return(bvF)
+  })
+  #names(bv) <- paste0("b", 1:length(Bv))
+
+  meff <- rowSums(rev(expand.grid(rev(bv))))
+
+  # generate bilinear term
+  Beta <- vector(mode = "list", length = V)
+  for (i in 1:V) {
+    Beta[[i]] <- genInt(Bv[i], Q)
+  }
+
+  k <- as.list(rep(1, Q))
+  for (j in 1:length(k)) {
+    for (i in 1:length(Beta)) {
+      k[[j]] <- kronecker(k[[j]], Beta[[i]][,j])
+    }
+    k[[j]] <- k[[j]]*lambda[j]
+  }
+
+  int <- Reduce("+", k)
+
+  # generate y
+  m <- mu + meff + int
   y <- rnorm(N, m, sy)
 
   return(list(mu = mu,

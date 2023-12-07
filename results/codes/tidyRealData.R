@@ -14,7 +14,17 @@ str(readFiles)
 
 ireland <- read_excel("Real data/ireland.xlsx",
                              sheet = "Optimal")
+
+ireland <- read_excel("~/Documents/PhD/Github/AMBARTI/03_real_datasets/01_data_sets/Historical_data_Ireland_VCU.xlsx",
+                      sheet = "Optimal")
 str(ireland)
+load("/Users/alessalemos/Downloads/avgRainfall_mm.Rdata")
+names(ireland)
+
+names(avgYearRain)
+avgYearRain$avg_rainfall_mm |> hist()
+
+plot(as.numeric(ireland$kph), as.numeric(ireland$ave_moist))
 
 # ireland <-  ireland %>%
 #   select("Year", "Genotype", "Location", "Bloc", "yld_ton_ha") %>%
@@ -50,6 +60,8 @@ train$Bloc <- as.factor(paste0(train$Environment, train$Bloc))
 
 test$Bloc <-  str_sub(test$Bloc, start= -7)
 test$Bloc <- as.factor(paste0(test$Environment, test$Bloc))
+
+
 
 save(train, file = "Real data/train_ireland.RData")
 save(test, file = "Real data/test_ireland.RData")

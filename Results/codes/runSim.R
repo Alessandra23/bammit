@@ -11,25 +11,56 @@ library(xgboost) # to run xboost
 library(arm) # to run bayesian glm
 library(AMBARTI)
 
+rm(list = ls())
+
 # examples simulating data and running model ------------------------------
 
-data <- simBAMMIT(V = 3,
+set.seed(022)
+data <- simBAMMIT(V = 2,
                   Q = 1,
-                  Bv = c(12,10, 2),
-                  mu = 100,
-                  lambda = c(12),
+                  Bv = c(6,2),
+                  mu = 10,
+                  lambda = c(10),
                   sb = 1,
                   sB = 1,
                   sy = 1)
 
 model <- bammitJags(data = data,
                     Q = 1,
-                    mmu = 100,
-                    smu = 10,
+                    mmu = 10,
+                    smu = 1,
                     a = 0.1,
                     b = 0.1,
-                    nthin = 2,
-                    nburnin = 2000)
+                    nthin = 4,
+                    nburnin = 2000,
+                    stheta = 1)
+
+# Tests
+
+plot(model)
+
+# y
+qplot(data$y, model$BUGSoutput$mean$mu) + geom_abline() + theme_bw() +
+  labs(x = 'y', y = expression(hat(y)))
+
+# interaction
+qplot(data$int, model$BUGSoutput$mean$int) + geom_abline() + theme_bw() +
+  labs(x = 'True interaction', y = 'Predicted')
+
+
+model$BUGSoutput$mean$beta1 |> sum()
+model$BUGSoutput$mean$beta1^2 |> sum()
+
+model$BUGSoutput$mean$beta2 |> sum()
+model$BUGSoutput$mean$beta2^2 |> sum()
+
+
+model$BUGSoutput$mean$thetaBeta1
+model$BUGSoutput$mean$thetaBeta1New
+model$BUGSoutput$mean$sqrtThetaBeta1
+model$BUGSoutput$mean$mBeta1
+
+model$BUGSoutput$mean$lambda
 
 # simulate data -----------------------------------------------------------
 

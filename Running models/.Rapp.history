@@ -1,2 +1,4 @@
 load("/Users/alessalemos/Documents/GitHub/bammit/Running models/trainQ1.rds")
 load("/Users/alessalemos/Documents/GitHub/bammit/Running models/modelAmbartiByYear.rds")
+load("/Users/alessalemos/Documents/GitHub/bammit/Running models/model_Q6.RData")
+load("/Users/alessalemos/Documents/GitHub/bammit/Running models/model_Q6.RData")

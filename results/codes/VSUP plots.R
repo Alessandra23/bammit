@@ -48,8 +48,6 @@ lims <- intLims
 
 
 
-
-
 p_main <- p_main +
   scale_fill_gradientn(
     limits = lims,

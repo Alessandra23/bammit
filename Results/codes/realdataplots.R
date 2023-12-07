@@ -1,12 +1,38 @@
 library(stringr)
 library(ggplot2)
 library(bammit)
-load("Real data/train_ireland.RData")
-load("Real data/test_ireland.RData")
+# load("Real data/train_ireland.RData")
+# load("Real data/test_ireland.RData")
 
-modeltrainQ1 <- readRDS("~/Documents/GitHub/bammit/Running models/trainQ1.rds")
-model <- modeltrainQ1
-data <- test
+# modeltrainQ1 <- readRDS("~/Documents/GitHub/bammit/Running models/trainQ1.rds")
+# model <- modeltrainQ1
+# data <- test
+
+
+load("~/Documents/GitHub/bammit/Real data/ireland.RData")
+load("~/Documents/GitHub/bammit/Running models/model_Q4.RData")
+
+ireland$Bloc <- gsub('.*_(\\d)$', 'b\\1', ireland$Bloc)
+
+# separate the data set in train and test
+train <- subset(ireland,  grepl('1$|2$|3$', Bloc))
+test <- subset(ireland,  grepl('4$', Bloc))
+
+train$Bloc <-train$Bloc |> as.factor()
+test$Bloc <- test$Bloc |>  as.factor()
+
+levels(train$Bloc)
+levels(test$Bloc)
+
+test_original <- test
+
+train$Yield <- scale(train$Yield) |> as.numeric()
+test$Yield <- scale(test$Yield) |> as.numeric()
+
+
+
+model <- model_Q4
+data <- test_original
 
 # pred <- predictionBAMMITReal(model = model$BUGSoutput, data = data)
 # caret::RMSE(pred,test$Yield)
@@ -25,15 +51,19 @@ bl <- model$BUGSoutput$sims.list$bl
 inthat <- model$BUGSoutput$sims.list$blin
 N <- length(data$Yield)
 
-yhat <- matrix(0, nrow = nrow(g), ncol = N)
-for(i in 1:nrow(g)){
-  yhat[i,] <- rep(muhat, N) + g[i, genotype] + e[i, environment] + t[i, time] + bl[i, bloc]  +  inthat[i,]
-}
+# yhat <- matrix(0, nrow = nrow(g), ncol = N)
+# for(i in 1:nrow(g)){
+#   yhat[i,] <- rep(muhat, N) + g[i, genotype] + e[i, environment] + t[i, time] + bl[i, bloc]  +  inthat[i,]
+# }
+#
+# inthat_eff <- matrix(0, nrow = nrow(g), ncol = N)
+# for(i in 1:nrow(g)){
+#   inthat_eff[i,] <- g[i, genotype] + inthat[i,]
+# }
 
-inthat_eff <- matrix(0, nrow = nrow(g), ncol = N)
-for(i in 1:nrow(g)){
-  inthat_eff[i,] <- g[i, genotype] + inthat[i,]
-}
+#
+# yhat <- model$BUGSoutput$median$mu_test
+# inthat_eff <- model$BUGSoutput$median$int_test
 
 
 # set up names
@@ -44,18 +74,31 @@ t <- data$Year |> as.character()
 b <- data$Bloc |> as.character()
 
 # get yhats
-pred <- yhat
-yhat <- apply(pred, 2, median) # predict values for yhat
-# get sd
-yhatSD <-  apply(pred, 2, sd)
+# pred <- model$BUGSoutput$sims.list$mu_test
+# yhat <- apply(pred, 2, median) * sd(data$Yield) + mean(data$Yield)# predict values for yhat in the original scale
+# # get sd
+# yhatSD <-  apply(pred, 2, sd) * sd(data$Yield)
+
+
+years_pred <- list()
+for(i in 1:ncol(model$BUGSoutput$sims.list$mu_test)){
+  years_pred[[i]] <- model$BUGSoutput$sims.list$mu_test[,i]*sd(data$Yield) + mean(data$Yield)
+}
+length(years_pred)
+
+yhat <- lapply(years_pred, median) |> unlist()
+yhatSD <- lapply(years_pred, sd) |> unlist()
+
+caret::RMSE(yhat, data$Yield)
+caret::R2(yhat, data$Yield)
 
 # create a df
 df.ambarti <- data.frame(yhat = yhat, e = e, g = g, t = t, b = b, sd = yhatSD)
 #saveRDS(df.ambarti, "Running models/bammitVsupOut.rds")
-bammitVsupOut <- readRDS("~/Documents/GitHub/bammit/Running models/bammitVsupOut.rds")
-df.ambarti <- bammitVsupOut
-df.ambarti <- subset(df.ambarti,  t == c("2010"))
-df.ambarti <- subset(df.ambarti,  grepl('3$', b))
+#bammitVsupOut <- readRDS("~/Documents/GitHub/bammit/Running models/bammitVsupOut.rds")
+#df.ambarti <- bammitVsupOut
+df.ambarti <- subset(df.ambarti,  t == c("2019"))
+#df.ambarti <- subset(df.ambarti,  grepl('3$', b))
 df.ambarti <- df.ambarti |> dplyr::select("yhat", "e", "g", "t", "sd")
 df.ambarti$e <- factor(df.ambarti$e, levels = unique(df.ambarti$e))
 df.ambarti$g <- factor(df.ambarti$g, levels = unique(df.ambarti$g))
@@ -99,9 +142,9 @@ pal = rev(colorspace::diverging_hcl(palette = "Blue-Red 3", n = 8, alpha = 4))
 
 
 range(df.ambarti$yhat)
-r_yhat <- c(8,16)
+r_yhat <- c(9,14)
 range(df.ambarti$sd)
-r_sd <- c(0.48,0.6)
+r_sd <- c(0,0.6)
 
 pp <- ggplot(df.ambarti) +
   #geom_raster(aes(e, g, fill = zip(yhat, sd))) +
@@ -120,12 +163,15 @@ pp <- ggplot(df.ambarti) +
     ),
     guide = "colorfan"
   ) +
-  theme_bw(base_size = 14) +
+  theme_bw(base_size = 11) +
   labs(x = "Environment", y = "Genotype") #+
 #facet_wrap(~t,scales = "free")
 
 pp
 
+
+ggsave("~/Documents/GitHub/bammit/Results/figures paper/real data/vsup2019.pdf", width = 7.55, height = 5.04, device = cairo_pdf)
+dev.off()
 # dim: 8.55 and 6.04
 
 
@@ -320,34 +366,67 @@ RMSE(test$Yield, pred)
 
 # plot year ---------------------------------------------------------------
 
-bammitVsupOut <- readRDS("~/Documents/GitHub/bammit/Running models/bammitVsupOut.rds")
-df.ambarti <- bammitVsupOut
+# bammitVsupOut <- readRDS("~/Documents/GitHub/bammit/Running models/bammitVsupOut.rds")
+# df.ambarti <- bammitVsupOut
 
-df_years <- list()
-df_years <- lapply(unique(df.ambarti$t), function(x){
-  df <- subset(df.ambarti,  t == x)
-  df <- subset(df,  grepl('3$', b))
-})
+df.ambarti <- data.frame(yhat = yhat, e = e, g = g, t = t, b = b, sd = yhatSD)
 
-dat <- dplyr::bind_rows(df_years)
+mean_real <- data |> dplyr::group_by(Year) |> dplyr::summarise(mean = mean(Yield),
+                                                               sd = sd(Yield))
 
-means_year <- lapply(df_years, function(x){
-  data.frame(m = median(x[, 'yhat']),
-                      sd = sd(x[, 'yhat']))
-}) |>
-  dplyr::bind_rows() |>
-  dplyr::mutate(t = unique(dat$t),
-                lower = m - 2*sd,
-                upper = m + 2*sd)
+df.ambarti |> ggplot(aes(x = factor(t), y = yhat)) +
+  geom_boxplot(size = 0.2) +
+  geom_point(data = mean_real, aes(x = factor(Year), y = mean),
+             colour = "steelblue", size = 2.5) +
+  theme_bw(base_size = 16) +
+  labs(x = 'Year', y = 'Yield')
 
 
 
 
-(p1 <- ggplot(data = means_year, aes(t, m))+
-    #geom_point() +
-    labs(x = 'Year', y = '\U0177') +
-    geom_pointrange(aes(ymin = lower, ymax = upper), colour = "steelblue") +
-    theme_bw(base_size = 16))
+# df_years <- list()
+# df_years <- lapply(unique(df.ambarti$t), function(x){
+#   df <- subset(df.ambarti,  t == x)
+#   #df <- subset(df,  grepl('3$', b))
+# })
+#
+# dat <- dplyr::bind_rows(df_years)
+#
+# means_year <- lapply(df_years, function(x){
+#   data.frame(m = median(x[, 'yhat']),
+#              sd = sd(x[, 'yhat']))
+# }) |>
+#   dplyr::bind_rows() |>
+#   dplyr::mutate(t = unique(dat$t),
+#                 lower = m - 2*sd,
+#                 upper = m + 2*sd,
+#                 true = mean_real$mean)
+# #pred = true - m)
+#
+#
+# df_long <- means_year |> tidyr::pivot_longer(cols = c('true', 'm'),
+#                                              names_to = 'key',
+#                                              values_to = 'value')
+#
+# df_long |> ggplot(aes(x = t, y = value, group = key, colour = key)) +
+#   geom_point() +  # Draw lines
+#   geom_pointrange(aes(ymin = lower, ymax = upper)) +
+#   labs(
+#     x = "Year",
+#     y = "Yield"
+#   )+
+#   theme_bw(base_size = 16)
+
+# p1 <- ggplot(data = means_year, aes(t, pred))+
+#     #geom_point() +
+#     labs(x = 'Year', y = '\U0177') +
+#     geom_pointrange(aes(ymin = lower, ymax = upper), colour = "steelblue") +
+#     theme_bw(base_size = 16)
+# p1
+
+
+
+
 
 
 

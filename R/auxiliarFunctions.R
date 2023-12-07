@@ -92,11 +92,11 @@ predictionBAMMITReal <- function(model, data) {
   bloc <- data$Bloc
 
   muhat <- model$mean$muall
-  g <- model$mean$g
-  e <- model$mean$e
-  t <- model$mean$t
-  bl <- model$mean$bl
-  inthat <- model$mean$blin
+  g <- model$mean$b1
+  e <- model$mean$b2
+  t <- model$mean$b3
+  bl <- model$mean$b4
+  inthat <- model$mean$int
 
   N <- length(data$Yield)
   yhat <- rep(muhat, N) + g[genotype] + e[environment] + t[time] + bl[bloc]  +  inthat
