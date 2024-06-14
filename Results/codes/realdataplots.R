@@ -30,7 +30,6 @@ train$Yield <- scale(train$Yield) |> as.numeric()
 test$Yield <- scale(test$Yield) |> as.numeric()
 
 
-
 model <- model_Q4
 data <- test_original
 
@@ -97,7 +96,7 @@ df.ambarti <- data.frame(yhat = yhat, e = e, g = g, t = t, b = b, sd = yhatSD)
 #saveRDS(df.ambarti, "Running models/bammitVsupOut.rds")
 #bammitVsupOut <- readRDS("~/Documents/GitHub/bammit/Running models/bammitVsupOut.rds")
 #df.ambarti <- bammitVsupOut
-df.ambarti <- subset(df.ambarti,  t == c("2019"))
+df.ambarti <- subset(df.ambarti,  t == c("2010"))
 #df.ambarti <- subset(df.ambarti,  grepl('3$', b))
 df.ambarti <- df.ambarti |> dplyr::select("yhat", "e", "g", "t", "sd")
 df.ambarti$e <- factor(df.ambarti$e, levels = unique(df.ambarti$e))
@@ -142,7 +141,7 @@ pal = rev(colorspace::diverging_hcl(palette = "Blue-Red 3", n = 8, alpha = 4))
 
 
 range(df.ambarti$yhat)
-r_yhat <- c(9,14)
+r_yhat <- c(4,12)
 range(df.ambarti$sd)
 r_sd <- c(0,0.6)
 

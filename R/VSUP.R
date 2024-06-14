@@ -1,5 +1,5 @@
 #' VSUP
-#'
+#' This code was used with kind permission from Claus Wilke.
 #' Functions from 'multiscales' package to create VSUP plots
 #'
 #'
