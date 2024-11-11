@@ -7,7 +7,7 @@ library(reshape2)
 
 rm(list = ls())
 
-# Generate betas
+# Generate betas ---------
 genInt <- function(index = 10, Q = 1, stheta = 1) {
   # Generate theta matrix
   theta <- matrix(rnorm(index * Q, 0, stheta), nrow = index, ncol = Q)
@@ -24,7 +24,7 @@ genInt <- function(index = 10, Q = 1, stheta = 1) {
   return(variable)
 }
 
-# Models
+# Functions to run the bayesian models ---------
 
 # Model 1 - Interaction just between beta1 and beta 2
 model_jags_one_way <- function(data, Q, mmu, smu, a, b, stheta = 1, nthin, nburnin){
@@ -477,32 +477,13 @@ model{
 
   # Main effects
   for(i in 1:B1) {
-    b1_aux[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
+    b1[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
   }
-
-  m_b1_aux <- sum(b1_aux)/B1
-  for(i in 1:B1) {
-    b1[i] = b1_aux[i] - m_b1_aux
-  }
-
-
   for(i in 1:B2) {
-    b2_aux[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
+    b2[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
   }
-
-  m_b2_aux <- sum(b2_aux)/B2
-  for(i in 1:B2) {
-    b2[i] = b2_aux[i] - m_b2_aux
-  }
-
-
   for(i in 1:B3) {
-    b3_aux[i] ~ dnorm(0, sb3^-2) # Prior on effect 2
-  }
-
-  m_b3_aux <- sum(b3_aux)/B3
-  for(i in 1:B3) {
-    b3[i] = b3_aux[i] - m_b3_aux
+    b3[i] ~ dnorm(0, sb3^-2) # Prior on effect 2
   }
 
   # Interaction beta 1
@@ -653,39 +634,17 @@ model{
 
   # Main effects
   for(i in 1:B1) {
-    b1_aux[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
+    b1[i] ~ dnorm(0, sb1^-2) # Prior on effect 1
   }
-
-  m_b1_aux <- sum(b1_aux)/B1
-  for(i in 1:B1) {
-    b1[i] = b1_aux[i] - m_b1_aux
-  }
-
   for(i in 1:B2) {
-    b2_aux[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
+    b2[i] ~ dnorm(0, sb2^-2) # Prior on effect 2
   }
-
-  m_b2_aux <- sum(b2_aux)/B2
-  for(i in 1:B2) {
-    b2[i] = b2_aux[i] - m_b2_aux
-  }
-
   for(i in 1:B3) {
-    b3_aux[i] ~ dnorm(0, sb3^-2) # Prior on effect 3
-  }
-
-  m_b3_aux <- sum(b3_aux)/B3
-  for(i in 1:B3) {
-    b3[i] = b3_aux[i] - m_b3_aux
+    b3[i] ~ dnorm(0, sb3^-2) # Prior on effect 2
   }
 
   for(i in 1:B4) {
-    b4_aux[i] ~ dnorm(0, sb4^-2) # Prior on effect 4
-  }
-
-  m_b4_aux <- sum(b4_aux)/B4
-  for(i in 1:B4) {
-    b4[i] = b4_aux[i] - m_b4_aux
+    b4[i] ~ dnorm(0, sb4^-2) # Prior on effect 2
   }
 
   # Interaction beta 1
@@ -748,7 +707,6 @@ model{
     M3[q] ~ dbern(p3[q])
     p3[q] ~ dbeta(1, 10)
   }
-
 
    # Interaction beta 4
   for(q in 1:Q) {
@@ -816,8 +774,8 @@ model{
 
   # Choose the parameters to watch
   modelParameters <- c(
-    "b1", "b2", "b3", "b4", "lambda", "beta1", "beta2", "beta3", "beta4", "sy", "muall",
-    "int", "mu", "p1", "p2", "p3", "p4"
+    "b1", "b2", "b3","lambda", "beta1", "beta2", "beta3", "sy", "muall",
+    "int", "mu", "p1", "p2", "p3", 'p4'
   )
 
 
@@ -934,7 +892,7 @@ model_bfm <- function(data, mmu, smu, a,b, nthin, nburnin){
 }
 
 
-# Funtions to generate the data
+# Functions to generate the data ---------
 
 # Function to generate data from Model 1
 genData_V3_one_way <- function(B1, B2, B3, sigma, sb, lambda){ #sb1, sb2, sb3, sb4){
@@ -997,7 +955,7 @@ genData_V3_one_two_way <- function(B1, B2, B3, sigma, sb, lambda){
   N <- Reduce("*", Bv)
   Q <- length(lambda)
   V <- length(Bv)
-  mu <- 100
+  mu <- 10
 
   x <- expand.grid(1:Bv[1], 1:Bv[2], 1:Bv[3]) |>
     dplyr::mutate_if(is.numeric,as.factor)
@@ -1047,7 +1005,6 @@ genData_V3_one_two_way <- function(B1, B2, B3, sigma, sb, lambda){
               #b4 = b4,
               blin = blin,
               blin2 = blin2,
-              int = blin + blin2,
               y = y,
               betas = list(beta1 = beta1, beta2 = beta2, beta3 = beta3),#, beta4 = beta4),
               Bv = Bv))
@@ -1182,7 +1139,7 @@ genData_V4 <- function(B1, B2, B3, B4, sigma, sb, lambda){
   b3 <- b3 - mean(b3)
 
   b4 <- rnorm(B4, 0, sb)
-  b4 <- b3 - mean(b4)
+  b4 <- b4 - mean(b4)
 
 
   beta1 <- genInt(B1, Q)
@@ -1212,131 +1169,6 @@ genData_V4 <- function(B1, B2, B3, B4, sigma, sb, lambda){
 
 
 # Generate the results
-
-
-# Comp times --------------------------------------------------------------
-
-B1 <- 12
-B2 <- 10
-B3 <- 4
-B4 <- 2
-lambda <- 10 #c(8,10, 12)
-sb <- 1
-sigma <- 1
-
-set.seed(022)
-dat_V2 <- genData_V2(B1 = B1, B2 = B2, sb = sb, sigma = sigma, lambda = lambda)
-dat_V3 <- genData_V3(B1 = B1, B2 = B2, B3 = B3, sb = sb, sigma = sigma, lambda = lambda)
-dat_V4 <- genData_V4(B1 = B1, B2 = B2, B3 = B3, B4 = B4, sb = sb, sigma = sigma, lambda = lambda)
-
-model_V4_Q1 <- model_bammit_V4(data = dat_V4,
-                               Q = 1,
-                               mmu = 100,
-                               smu = 1,
-                               a = 0.1,
-                               b = 0.1,
-                               nthin = 2,
-                               nburnin = 2000)
-
-plot(model_V4_Q1)
-qplot(dat_V4$y, model_V4_Q1$BUGSoutput$mean$mu) + geom_abline()
-qplot(dat_V4$blin, model_V4_Q1$BUGSoutput$mean$int) + geom_abline()
-qplot(dat_V4$b1, model_V4_Q1$BUGSoutput$mean$b1) + geom_abline()
-qplot(dat_V4$b2, model_V4_Q1$BUGSoutput$mean$b2) + geom_abline()
-qplot(dat_V4$b3, model_V4_Q1$BUGSoutput$mean$b3) + geom_abline()
-qplot(dat_V4$b4, model_V4_Q1$BUGSoutput$mean$b4) + geom_abline()
-
-complexity <- microbenchmark::microbenchmark(m1 = model_bammit_V2(data = dat_V2,
-                                                                  Q = 1,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m2 = model_bammit_V2(data = dat_V2,
-                                                                  Q = 2,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m3 = model_bammit_V2(data = dat_V2,
-                                                                  Q = 3,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m4 = model_bammit_V3(data = dat_V3,
-                                                                  Q = 1,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m5 = model_bammit_V3(data = dat_V3,
-                                                                  Q = 2,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m6 = model_bammit_V3(data = dat_V3,
-                                                                  Q = 3,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m7 = model_bammit_V4(data = dat_V4,
-                                                                  Q = 1,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m8 = model_bammit_V4(data = dat_V4,
-                                                                  Q = 2,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             m9 = model_bammit_V4(data = dat_V4,
-                                                                  Q = 3,
-                                                                  mmu = 100,
-                                                                  smu = 1,
-                                                                  a = 0.1,
-                                                                  b = 0.1,
-                                                                  nthin = 2,
-                                                                  nburnin = 2000),
-                                             times = 1)
-
-df_comp <- data.frame(V = as.factor(c(2,2,2,3,3,3,4,4,4)),
-                      Q = as.numeric(c(1,2,3,1,2,3,1,2,3)),
-                      time = c(37.65172, 119.49784, 119.49784,
-                               186.98443, 602.86332, 1046.84481,
-                               404.10346, 1607.02512, 2026.73302)/60)
-
-df_comp |> ggplot(aes(x = Q, y = time, colour = V)) +
-  geom_point(size = 3) +
-  geom_line(linewidth = 1) +
-  ylab('Time (minutes)') +
-  theme_bw()
-
-plot(complexity, type = 'p')
-
-
-# save(complexity, file = "Running models/complexity.RData")
-
 
 
 # Figure 1 ----------------------------------------------------------------
@@ -1400,84 +1232,82 @@ fig1_df <- data.frame(
 fig1_df |>
   ggplot(aes(x = true, y = est)) +
   geom_abline(size = 0.3, col = "gray") +
-  geom_linerange(aes(ymin =  q1, ymax = q2), alpha = 0.5, size = 0.4) +
+  geom_linerange(aes(ymin =  q1, ymax = q2), alpha = 0.5, linewidth = 0.4) +
   geom_point(colour =  "steelblue", size = 1) +
   facet_wrap(~model) +
   labs(x = "True", y = "Estimated") +
   theme_bw(base_size = 16) +
   theme(strip.background = element_blank(),
         panel.spacing.x = unit(5,"mm"),
-        legend.position = c(0.75, 0.04))
+        legend.position.inside = c(0.75, 0.04))
 
 
 
-# Figure 2 - behavior of the BAMMIT interaction when increase the --------
+# Figure 2 - behavior of the BAMMIT interaction when we increase Q --------
 
-# Simulating with Q = 1 ---
+# Simulating with Q1,sim = Q2,sim  = 1 -------
 
-B1 <- 10
-B2 <- 5
-B3 <- 2
+B1 <- 12
+B2 <- 10
+B3 <- 4
 lambda <- 10 #c(8,10, 12)
 sb <- 1
 sigma <- 1
 
 set.seed(022)
-dat <- genData_2(B1 = B1, B2 = B2, B3 = B3,  sb = sb, sigma = sigma, lambda = lambda)
-
+dat <- genData_V3_one_two_way(B1 = B1, B2 = B2, B3 = B3,  sb = sb, sigma = sigma, lambda = lambda)
 
 # run the two models
+model_V3_Q1 <- model_bammit_V3(data = dat,
+                               Q = 1,
+                               mmu = 10,
+                               smu = 1,
+                               a = 0.1,
+                               b = 0.1,
+                               nthin = 2,
+                               nburnin = 2000)
 
-model_7_Q1 <- model_bammit_V3(data = dat,
-                           Q = 1,
-                           mmu = 10,
-                           smu = 1,
-                           a = 0.1,
-                           b = 0.1,
-                           nthin = 2,
-                           nburnin = 2000)
 
-
-qplot(dat$y, model_7_Q1$BUGSoutput$median$mu) +
+qplot(dat$y, model_V3_Q1$BUGSoutput$median$mu) +
   geom_abline() +
-  geom_linerange(aes(ymin =  apply(model_7_Q1$BUGSoutput$sims.list$mu, 2, function(x) quantile(x, 0.05)),
-                     ymax = apply(model_7_Q1$BUGSoutput$sims.list$mu, 2, function(x) quantile(x, 0.95))), alpha = 0.5, size = 0.4) +
+  geom_linerange(aes(ymin =  apply(model_V3_Q1$BUGSoutput$sims.list$mu, 2, function(x) quantile(x, 0.05)),
+                     ymax = apply(model_V3_Q1$BUGSoutput$sims.list$mu, 2, function(x) quantile(x, 0.95))), alpha = 0.5, size = 0.4) +
   theme_bw() +
   labs(x = 'True', y = 'Estimated')
 
 
-model_7_Q2 <- model_bammit(data = dat,
-                           Q = 2,
-                           mmu = 10,
-                           smu = 1,
-                           a = 0.1,
-                           b = 0.1,
-                           nthin = 2,
-                           nburnin = 2000)
+model_V3_Q2 <- model_bammit_V3(data = dat,
+                               Q = 2,
+                               mmu = 10,
+                               smu = 1,
+                               a = 0.1,
+                               b = 0.1,
+                               nthin = 2,
+                               nburnin = 2000)
 
-model_7_Q3 <- model_bammit(data = dat,
-                           Q = 3,
-                           mmu = 10,
-                           smu = 1,
-                           a = 0.1,
-                           b = 0.1,
-                           nthin = 2,
-                           nburnin = 2000)
+model_V3_Q3 <- model_bammit_V3(data = dat,
+                               Q = 3,
+                               mmu = 10,
+                               smu = 1,
+                               a = 0.1,
+                               b = 0.1,
+                               nthin = 2,
+                               nburnin = 2000)
 
-model_7_Q4 <- model_bammit(data = dat,
-                           Q = 4,
-                           mmu = 10,
-                           smu = 1,
-                           a = 0.1,
-                           b = 0.1,
-                           nthin = 2,
-                           nburnin = 2000)
+model_V3_Q4 <- model_bammit_V3(data = dat,
+                               Q = 4,
+                               mmu = 10,
+                               smu = 1,
+                               a = 0.1,
+                               b = 0.1,
+                               nthin = 2,
+                               nburnin = 2000)
 
 
-fig2_bammit_Q1 <- model_7_Q1
-fig2_bammit_Q2 <- model_7_Q2
-fig2_bammit_Q3 <- model_7_Q3
-fig2_bammit_Q4 <- model_7_Q4
+fig2_bammit_Q1 <- model_V3_Q1
+fig2_bammit_Q2 <- model_V3_Q2
+fig2_bammit_Q3 <- model_V3_Q3
+fig2_bammit_Q4 <- model_V3_Q4
 
 # save(fig2_bammit_Q1, file = "Running models/fig2_bammit_Q1.RData")
 # save(fig2_bammit_Q2, file = "Running models/fig2_bammit_Q4.RData")
@@ -1497,22 +1327,22 @@ fig2_bammit_Q4 <- model_7_Q4
 
 # Create a data frame
 fig2_df <- data.frame(
-  model = c(rep("Q = 1", length(model_7_Q1$BUGSoutput$mean$int)),
-            rep("Q = 2", length(model_7_Q2$BUGSoutput$mean$int)),
-            rep("Q = 3", length(model_7_Q3$BUGSoutput$mean$int)),
-            rep("Q = 4", length(model_7_Q4$BUGSoutput$mean$int))),
-  est = c(model_7_Q1$BUGSoutput$mean$int,
-          model_7_Q2$BUGSoutput$mean$int,
-          model_7_Q3$BUGSoutput$mean$int,
-          model_7_Q4$BUGSoutput$mean$int),
-  q1 = c(apply(model_7_Q1$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025)),
-         apply(model_7_Q2$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025)),
-         apply(model_7_Q3$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025)),
-         apply(model_7_Q4$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025))),
-  q2 = c(apply(model_7_Q1$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975)),
-         apply(model_7_Q2$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975)),
-         apply(model_7_Q3$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975)),
-         apply(model_7_Q4$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975))),
+  model = c(rep("Q = 1", length(model_V3_Q1$BUGSoutput$mean$int)),
+            rep("Q = 2", length(model_V3_Q2$BUGSoutput$mean$int)),
+            rep("Q = 3", length(model_V3_Q3$BUGSoutput$mean$int)),
+            rep("Q = 4", length(model_V3_Q4$BUGSoutput$mean$int))),
+  est = c(model_V3_Q1$BUGSoutput$mean$int,
+          model_V3_Q2$BUGSoutput$mean$int,
+          model_V3_Q3$BUGSoutput$mean$int,
+          model_V3_Q4$BUGSoutput$mean$int),
+  q1 = c(apply(model_V3_Q1$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025)),
+         apply(model_V3_Q2$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025)),
+         apply(model_V3_Q3$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025)),
+         apply(model_V3_Q4$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.025))),
+  q2 = c(apply(model_V3_Q1$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975)),
+         apply(model_V3_Q2$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975)),
+         apply(model_V3_Q3$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975)),
+         apply(model_V3_Q4$BUGSoutput$sims.list$int, 2, function(x) quantile(x, 0.975))),
   true = c(dat$blin + dat$blin2, dat$blin + dat$blin2, dat$blin + dat$blin2, dat$blin + dat$blin2)
 )
 
@@ -1591,10 +1421,11 @@ model_V3_Q6_Qsim1 <- model_bammit_V3(data = dat_V3_Q1_one_two_way,
 
 set.seed(022)
 dat_V3_Q1_one_two_way_test <- genData_V3_one_two_way(B1 = B1, B2 = B2, B3 = B3,  sb = sb, sigma = sigma, lambda = lambda)
-caret::RMSE(model_V3_Q1_Qsim1$BUGSoutput$mean$mu, dat_V3_Q1_one_two_way_test$y)
-caret::RMSE(model_V3_Q2_Qsim1$BUGSoutput$mean$mu, dat_V3_Q1_one_two_way_test$y)
-caret::RMSE(model_V3_Q4_Qsim1$BUGSoutput$mean$mu, dat_V3_Q1_one_two_way_test$y)
-caret::RMSE(model_V3_Q6_Qsim1$BUGSoutput$mean$int, dat_V3_Q1_one_two_way$int)
+caret::RMSE(model_V3_Q1_Qsim1$BUGSoutput$mean$int, dat_V3_Q1_one_two_way_test$blin + dat_V3_Q1_one_two_way_test$blin2)
+caret::RMSE(model_V3_Q2_Qsim1$BUGSoutput$mean$int, dat_V3_Q1_one_two_way_test$blin + dat_V3_Q1_one_two_way_test$blin2)
+caret::RMSE(model_V3_Q4_Qsim1$BUGSoutput$mean$int, dat_V3_Q1_one_two_way_test$blin + dat_V3_Q1_one_two_way_test$blin2)
+caret::RMSE(model_V3_Q6_Qsim1$BUGSoutput$mean$int, dat_V3_Q1_one_two_way_test$blin + dat_V3_Q1_one_two_way_test$blin2)
+
 
 
 
@@ -1641,12 +1472,12 @@ model_V3_Q6_Qsim2 <- model_bammit_V3(data = dat_V3_Q2_one_two_way,
                                      nthin = 2,
                                      nburnin = 2000)
 
-set.seed(023)
+set.seed(022)
 dat_V3_Q2_one_two_way_test <- genData_V3_one_two_way(B1 = B1, B2 = B2, B3 = B3,  sb = sb, sigma = sigma, lambda = lambda)
-caret::RMSE(model_V3_Q1_Qsim2$BUGSoutput$mean$int, dat_V3_Q2_one_two_way_test$int)
-caret::RMSE(model_V3_Q2_Qsim2$BUGSoutput$mean$mu, dat_V3_Q2_one_two_way_test$y)
-caret::RMSE(model_V3_Q4_Qsim2$BUGSoutput$mean$mu, dat_V3_Q2_one_two_way_test$y)
-caret::RMSE(model_V3_Q6_Qsim2$BUGSoutput$mean$mu, dat_V3_Q2_one_two_way_test$y)
+caret::RMSE(model_V3_Q1_Qsim2$BUGSoutput$mean$int, dat_V3_Q2_one_two_way_test$blin + dat_V3_Q2_one_two_way_test$blin2)
+caret::RMSE(model_V3_Q2_Qsim2$BUGSoutput$mean$int, dat_V3_Q2_one_two_way_test$blin + dat_V3_Q2_one_two_way_test$blin2)
+caret::RMSE(model_V3_Q4_Qsim2$BUGSoutput$mean$int, dat_V3_Q2_one_two_way_test$blin + dat_V3_Q2_one_two_way_test$blin2)
+caret::RMSE(model_V3_Q6_Qsim2$BUGSoutput$mean$int, dat_V3_Q2_one_two_way_test$blin + dat_V3_Q2_one_two_way_test$blin2)
 
 
 
@@ -1704,27 +1535,426 @@ caret::RMSE(model_V3_Q2_Qsim3$BUGSoutput$mean$mu, dat_V3_Q3_one_two_way_test$y)
 caret::RMSE(model_V3_Q4_Qsim3$BUGSoutput$mean$mu, dat_V3_Q3_one_two_way_test$y)
 caret::RMSE(model_V3_Q6_Qsim3$BUGSoutput$mean$int, dat_V3_Q3_one_two_way$int)
 
+# Figure 3 ----------------------------------------------------------------
 
-  # Figure 3 ----------------------------------------------------------------
+B1 <- 12
+B2 <- 10
+B3 <- 4
+B4 <- 2
+lambda <- c(8,10)
+sb <- 1
+sigma <- 1.5
+
+set.seed(022)
+dat <- genData_V4(B1 = B1, B2 = B2, B3 = B3, B4 = B4, sb = sb, sigma = sigma, lambda = lambda)
+
+# run the two models
+model_V4_Q2 <- model_bammit_V4(data = dat,
+                               Q = 2,
+                               mmu = 10,
+                               smu = 1,
+                               a = 0.1,
+                               b = 0.1,
+                               nthin = 2,
+                               nburnin = 2000)
+
+
+
+dfEstV4 <- list(b1 = model_V4_Q2$BUGSoutput$mean$b1,
+                b2 = model_V4_Q2$BUGSoutput$mean$b2,
+                b3 = model_V4_Q2$BUGSoutput$mean$b3,
+                b4 = model_V4_Q2$BUGSoutput$mean$b4) |>
+  melt() |> dplyr::select(L1, value)
+
+# df simulated data
+dfDataV4 <- list(b1 = dat$b1,
+                 b2 = dat$b2,
+                 b3 = dat$b3,
+                 b4 = dat$b4) |>
+  melt() |> dplyr::select(L1, value)
+
+dfMainEffV4 <- cbind(dfEstV4, dfDataV4)[,c(1,2,4)]
+colnames(dfMainEffV4) <- c("var", "est", "true")
+
+quantV4mainEff <- list(
+  b1 = data.frame(q1 = apply(model_V4_Q2$BUGSoutput$sims.list$b1, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(model_V4_Q2$BUGSoutput$sims.list$b1, 2, function(x) quantile(x, 0.95))),
+  b2 = data.frame(q1 = apply(model_V4_Q2$BUGSoutput$sims.list$b2, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(model_V4_Q2$BUGSoutput$sims.list$b2, 2, function(x) quantile(x, 0.95))),
+  b3 = data.frame(q1 = apply(model_V4_Q2$BUGSoutput$sims.list$b3, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(model_V4_Q2$BUGSoutput$sims.list$b3, 2, function(x) quantile(x, 0.95))),
+  b4 = data.frame(q1 = apply(model_V4_Q2$BUGSoutput$sims.list$b4, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(model_V4_Q2$BUGSoutput$sims.list$b4, 2, function(x) quantile(x, 0.95)))
+) |> plyr::ldply()
+
+dfMainEffV4 <- cbind(dfMainEffV4, quantV4mainEff$q1, quantV4mainEff$q2 )
+colnames(dfMainEffV4) <- c("var", "est", "true", "q1", "q2")
+
+
+dfMainEffV4$facet <- factor(dfMainEffV4$var,
+                            labels = c(expression(bold(b)^{(1)}),
+                                       expression(bold(b)^{(2)}),
+                                       expression(bold(b)^{(3)}),
+                                       expression(bold(b)^{(4)})))
+
+dfMainEffV4 |>
+  ggplot(aes(x = true, y = est)) +
+  geom_abline(size = 0.3, col = "gray") +
+  geom_linerange(aes(ymin =  q1, ymax = q2), alpha = 0.5, size = 0.4) +
+  geom_point(colour =  "steelblue", size = 1) +
+  facet_wrap(~facet, ncol = 4, labeller = label_parsed) +
+  labs(x = "True", y = "Estimated") +
+  theme_bw(base_size = 16) +
+  xlim(-2,2)+
+  theme(strip.background = element_blank(),
+        panel.spacing.x = unit(5,"mm"),
+        legend.position = c(0.75, 0.04))
 
 
 
 # Figure 4 ----------------------------------------------------------------
 
+# simulated data
+VQ2Dataint <- list(V2 = V2N120Q2_train$int,
+                   V3 = V3N480Q2_train$int,
+                   V4 = V4N960Q2_train$int) |>
+  melt() |>
+  select(value, L1)
 
+VQ2int <- list(V2 = modelV2N120Q2QM2$mean$blin,
+               V3 = modelV3N480Q2QM2$mean$blin,
+               V4 = modelV4N960Q2QM2$mean$blin) |>
+  melt() |>
+  select(value, L1)
+
+quantVQ2int <- list(
+  V2 = data.frame(q1 = apply(modelV2N120Q2QM2$sims.list$blin, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(modelV2N120Q2QM2$sims.list$blin, 2, function(x) quantile(x, 0.95))),
+  V3 = data.frame(q1 = apply(modelV3N480Q2QM2$sims.list$blin, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(modelV3N480Q2QM2$sims.list$blin, 2, function(x) quantile(x, 0.95))),
+  V4 = data.frame(q1 = apply(modelV4N960Q2QM2$sims.list$blin, 2, function(x) quantile(x, 0.05)),
+                  q2 = apply(modelV4N960Q2QM2$sims.list$blin, 2, function(x) quantile(x, 0.95)))
+) |> plyr::ldply()
+
+VQ2int <- cbind(VQ2int, quantVQ2int$q1, quantVQ2int$q2)
+colnames(VQ2int) <- c("value", "L1", "q1", "q2")
+
+dfVQ2int <- data.frame(v = VQ2int$L1, est = VQ2int$value, true = VQ2Dataint$value,
+                       q1 = VQ2int$q1, q2 = VQ2int$q2)
+
+lab <- function(x) c("V = 2", "V = 3", "V = 4")
+dfVQ2int |>
+  ggplot(aes(x = true, y = est)) +
+  geom_abline(size = 0.3, col = "gray") +
+  geom_linerange(aes(ymin =  q1, ymax = q2), alpha = 0.2, size = 0.1) +
+  geom_point(colour =  "steelblue", size = 0.2) +
+  facet_wrap(~v,
+             labeller = as_labeller(lab)) +
+  labs(x = "True", y = "Estimated") +
+  theme_bw(base_size = 14) +
+  theme(strip.background = element_blank(),
+        panel.spacing.x = unit(5,"mm"),
+        legend.position = c(0.75, 0.04))
 
 # Table 3 -----------------------------------------------------------------
 
 
+datV2train <- transdat(data = V2N120Q2_train)
+datV3train <- transdat(data = V3N480Q2_train) # N = 480
+datV4train <- transdat(data = V4N960Q2_train)
+
+datV2test <- transdat(data = V2N120Q2_test)
+datV3test <- transdat(data = V3N480Q2_test) # N = 480
+datV4test <- transdat(data = V4N960Q2_test)
+
+
+# ----- Random Forest
+
+# models
+
+set.seed(02)
+mrfV2 <- randomForest(Y ~ ., data=datV2train, mtry = 2, importance=TRUE, na.action=na.omit)
+mrfV3 <- randomForest(Y ~ ., data=datV3train, mtry = 2, importance=TRUE, na.action=na.omit)
+mrfV4 <- randomForest(Y ~ ., data=datV4train, mtry = 2, importance=TRUE, na.action=na.omit)
+
+# predictions
+
+predrfV2 <- predict(mrfV2, data = datV2test[,-3])
+predrfV3 <- predict(mrfV3, data = datV3test[,-4])
+predrfV4 <- predict(mrfV4, data = datV4test[,-5])
+
+# rmse
+
+rmserfV2 <- caret::RMSE(predrfV2, datV2test[,3])
+rmserfV3 <- caret::RMSE(predrfV3, datV3test[,4])
+rmserfV4 <- caret::RMSE(predrfV4, datV4test[,5])
+
+caret::RMSE(predrfV2, datV2test[,3])
+caret::R2(predrfV2, datV2test[,3])
+
+c(rmserfV2, rmserfV3, rmserfV4)
+
+# r2
+
+r2rfV2 <- caret::R2(predrfV2, datV2test[,3])
+r2rfV3 <- caret::R2(predrfV3, datV3test[,4])
+r2rfV4 <- caret::R2(predrfV4, datV4test[,5])
+
+c(r2rfV2, r2rfV3, r2rfV4)
+
+
+
+# xboost ------------------------------------------------------------------
+
+# x and y for train and test  data
+
+# V2
+train_x_V2 = data.matrix(datV2train[, -3])
+train_y_V2 = datV2train[,3]
+
+test_x_V2 = data.matrix(datV2test[, -3])
+test_y_V2 = datV2test[, 3]
+
+xgb_train_V2 = xgb.DMatrix(data = train_x_V2, label = train_y_V2)
+xgb_test_V2 = xgb.DMatrix(data = test_x_V2, label = test_y_V2)
+
+# V3
+train_x_V3 = data.matrix(datV3train[, -4])
+train_y_V3 = datV3train[,4]
+
+test_x_V3 = data.matrix(datV3test[, -4])
+test_y_V3 = datV3test[, 4]
+
+xgb_train_V3 = xgb.DMatrix(data = train_x_V3, label = train_y_V3)
+xgb_test_V3 = xgb.DMatrix(data = test_x_V3, label = test_y_V3)
+
+
+# V4
+train_x_V4 = data.matrix(datV4train[, -5])
+train_y_V4 = datV4train[,5]
+
+test_x_V4 = data.matrix(datV4test[, -5])
+test_y_V4 = datV4test[, 5]
+
+xgb_train_V4 = xgb.DMatrix(data = train_x_V4, label = train_y_V4)
+xgb_test_V4 = xgb.DMatrix(data = test_x_V4, label = test_y_V4)
+
+# models
+
+set.seed(02)
+mxbV2 <- xgboost(data = xgb_train_V2, nrounds = 50)
+mxbV3 <- xgboost(data = xgb_train_V3, nrounds = 50)
+mxbV4 <- xgboost(data = xgb_train_V4, nrounds = 50)
+
+# predictions
+
+predxbV2 <- predict(mxbV2, xgb_test_V2)
+predxbV3 <- predict(mxbV3, xgb_test_V3)
+predxbV4 <- predict(mxbV4, xgb_test_V4)
+
+# rmse
+
+rmsexbV2 <- caret::RMSE(predxbV2, test_y_V2)
+rmsexbV3 <- caret::RMSE(predxbV3, test_y_V3)
+rmsexbV4 <- caret::RMSE(predxbV4, test_y_V4)
+
+cat("V2: ", rmsexbV2,
+    "V3: ", rmsexbV3,
+    "V4: ", rmsexbV4)
+
+# r2
+
+r2rfV2 <- caret::R2(predxbV2, test_y_V2)
+r2rfV3 <- caret::R2(predxbV3, test_y_V3)
+r2rfV4 <- caret::R2(predxbV4, test_y_V4)
+
+cat("V2: ", r2rfV2,
+    "V3: ", r2rfV3,
+    "V4: ", r2rfV4)
+
+
+
+# bayesian glm ------------------------------------------------------------
+
+
+# models
+
+set.seed(02)
+mbglmV2 <- bayesglm(Y ~ var1 + var2 , data = datV2train)
+mbglmV3 <- bayesglm(Y ~ var1 + var2 + var3 , data = datV3train)
+mbglmV4 <- bayesglm(Y ~ var1 + var2 + var4, data = datV4train)
+
+# predictions
+
+predbglmV2 <- predict(mbglmV2, data = datV2test[,-3])
+predbglmV3 <- predict(mbglmV3, data = datV3test[,-4])
+predbglmV4 <- predict(mbglmV4, data = datV4test[,-5])
+
+# rmse
+
+rmsebglmV2 <- caret::RMSE(predbglmV2, datV2test[,3])
+rmsebglmV3 <- caret::RMSE(predbglmV3, datV3test[,4])
+rmsebglmV4 <- caret::RMSE(predbglmV4, datV4test[,5])
+
+cat("V2: ", rmsebglmV2,
+    "V3: ", rmsebglmV3,
+    "V4: ", rmsebglmV4)
+
+# r2
+
+r2bglmV2 <- caret::R2(predbglmV2, datV2test[,3])
+r2bglmV3 <- caret::R2(predbglmV3, datV3test[,4])
+r2bglmV4 <- caret::R2(predbglmV4, datV4test[,5])
+
+cat("V2: ", r2bglmV2,
+    "V3: ", r2bglmV3,
+    "V4: ", r2bglmV4)
+
+
+
+
+# AMMI --------------------------------------------------------------------
+
+
+colnames(datV3train)[c(1,2,4)] <- c('Genotype', 'Environment','Yield')
+colnames(datV4train)[c(1,2,5)] <- c('Genotype', 'Environment','Yield')
+
+colnames(datV3test)[c(1,2,4)] <- c('Genotype', 'Environment','Yield')
+colnames(datV4test)[c(1,2,5)] <- c('Genotype', 'Environment','Yield')
+
+
+ammi_datV3train <- AMMIJagsRealData(datV3train, Q = 1, mmu = 100, smu = 10, stheta = 1, a = 0.1, b = 0.1,
+                                    nthin = 2, nburnin = 2000)
+
+ammi_datV4train <- AMMIJagsRealData(datV4train, Q = 1, mmu = 100, smu = 10, stheta = 1, a = 0.1, b = 0.1,
+                                    nthin = 2, nburnin = 2000)
+
+saveRDS(ammi_datV3train, "/Volumes/Alessa HD/PhD/bammit/Running models/ammi_datV3train.rds")
+saveRDS(ammi_datV4train, "/Volumes/Alessa HD/PhD/bammit/Running models/ammi_datV4train.rds")
+
+pred_datV3train <- predictionAMMIReal(model = ammi_datV3train$BUGSoutput, datV3test)
+pred_datV4train <- predictionAMMIReal(model = ammi_datV4train$BUGSoutput, datV4test)
+
+caret::RMSE(pred_datV3train, datV3test$Yield)
+caret::R2(pred_datV3train, datV3test$Yield)
+
+
+caret::RMSE(pred_datV4train, datV4test$Yield)
+caret::R2(pred_datV4train, datV4test$Yield)
+
+# AMBARTI -----------------------------------------------------------------
+
+
+# V = 3
+
+df = datV3train
+df$g = gsub('g','', df$Genotype)
+df$e = gsub('e','', df$Environment)
+df$y = df$Yield
+df = df[,-which(colnames(df) %in% c('Genotype','Environment','var3','Yield'))]
+df = as.data.frame(df)
+y = df$y
+x = df[,-which(colnames(df) == 'y')]
+fit.ambarti.ammi = ambarti(x, y, ntrees = 50, nburn = 500, npost = 1000, nsteps = 1)
+#saveRDS(fit.ambarti.ammi, "~/Documents/GitHub/bammit/Running models/ambarti_datV3train.RData")
+
+qq = var_used_trees(fit.ambarti.ammi)
+df2 = datV3test
+df2$g = gsub('g','', df2$Genotype)
+df2$e = gsub('e','', df2$Environment)
+df2$y = df2$Yield
+df2 = df2[,-which(colnames(df2) %in% c('Genotype','Environment','var3','Yield'))]
+df2 = as.data.frame(df2)
+y_test = df2$y
+x_test = df2[,-which(colnames(df2) == 'y')]
+yhat_ambarti2_ammi = predict_ambarti_alessa(object=fit.ambarti.ammi, newdata = x_test, type = 'mean')
+saveRDS(yhat_ambarti2_ammi, "~/Documents/GitHub/bammit/Running models/yhat_ambarti_datV3test.RData")
+
+caret::RMSE(y_test, yhat_ambarti2_ammi[,1])
+caret::R2(y_test, yhat_ambarti2_ammi[,1])
+
+
+# V = 4
+
+df = datV4train
+df$g = gsub('g','', df$Genotype)
+df$e = gsub('e','', df$Environment)
+df$y = df$Yield
+df = df[,-which(colnames(df) %in% c('Genotype','Environment','var3', 'var4' ,'Yield'))]
+df = as.data.frame(df)
+y = df$y
+x = df[,-which(colnames(df) == 'y')]
+fit.ambarti.ammi = ambarti(x, y, ntrees = 50, nburn = 500, npost = 1000, nsteps = 1)
+saveRDS(fit.ambarti.ammi, "~/Documents/GitHub/bammit/Running models/ambarti_datV4train.RData")
+
+qq = var_used_trees(fit.ambarti.ammi)
+df2 = datV4test
+df2$g = gsub('g','', df2$Genotype)
+df2$e = gsub('e','', df2$Environment)
+df2$y = df2$Yield
+df2 = df2[,-which(colnames(df2) %in% c('Genotype','Environment','var3', 'var4','Yield'))]
+df2 = as.data.frame(df2)
+y_test = df2$y
+x_test = df2[,-which(colnames(df2) == 'y')]
+yhat_ambarti2_ammi = predict_ambarti_alessa(object=fit.ambarti.ammi, newdata = x_test, type = 'mean')
+saveRDS(yhat_ambarti2_ammi, "~/Documents/GitHub/bammit/Running models/yhat_ambarti_datV4test.RData")
+
+caret::RMSE(y_test, yhat_ambarti2_ammi[,1])
+caret::R2(y_test, yhat_ambarti2_ammi[,1])
 
 # Table 4 -----------------------------------------------------------------
+
+
+# ambarti
+#devtools::install_github("ebprado/AMBARTI/R package", ref='main')
+library(AMBARTI)
+
+load("~/Documents/GitHub/bammit/Real data/ireland.RData")
+ireland$Bloc <- gsub('.*_(\\d)$', 'b\\1', ireland$Bloc)
+
+# separate the data set in train and test
+train <- subset(ireland,  grepl('1$|2$|3$', Bloc))
+test <- subset(ireland,  grepl('4$', Bloc))
+
+train$Bloc <-train$Bloc |> as.factor()
+test$Bloc <- test$Bloc |>  as.factor()
+
+levels(train$Bloc)
+levels(test$Bloc)
+
+
+# all years
+df = train
+df$g = gsub('g','', df$Genotype)
+df$e = gsub('e','', df$Environment)
+df$y = df$Yield
+df = df[,-which(colnames(df) %in% c('Genotype','Environment','Year','Yield', 'Bloc'))]
+df = as.data.frame(df)
+y = df$y
+x = df[,-which(colnames(df) == 'y')]
+fit.ambarti.ammi = ambarti(x, y, ntrees = 50, nburn = 1000, npost = 2000, nsteps = 1)
+saveRDS(fit.ambarti.ammi, "~/Documents/GitHub/bammit/Running models/fit.ambarti.ammi.RData")
+
+qq = var_used_trees(fit.ambarti.ammi)
+df2 = test
+df2$g = gsub('g','', df2$Genotype)
+df2$e = gsub('e','', df2$Environment)
+df2$y = df2$Yield
+df2 = df2[,-which(colnames(df2) %in% c('Genotype','Environment','Year','Yield', 'Bloc'))]
+df2 = as.data.frame(df2)
+y_test = df2$y
+x_test = df2[,-which(colnames(df2) == 'y')]
+yhat_ambarti2_ammi = predict_ambarti_alessa(object=fit.ambarti.ammi, newdata = x_test, type = 'mean')
+saveRDS(yhat_ambarti2_ammi, "~/Documents/GitHub/bammit/Running models/yhat_ambarti2.RData")
+
+caret::RMSE(y_test, yhat_ambarti2_ammi[,1])
+caret::R2(y_test, yhat_ambarti2_ammi[,1])
+
 
 
 
 
 # Figure 5 ----------------------------------------------------------------
-
-
 
 
 model <- model_Q4
@@ -1785,6 +2015,11 @@ gammas_df |>
   theme(strip.background = element_blank(),
         panel.spacing.x = unit(5,"mm"),
         legend.position = c(0.75, 0.04))
+
+
+
+
+
 
 
 
@@ -1933,9 +2168,10 @@ caret::RMSE(bfm_V3_Q2$BUGSoutput$mean$mu, dat_test_V3_Q2$y)
 
 
 
-# Real data
 
-library(caret)
+# REAL DATA ---------------------------------------------------------------
+
+
 
 predictionBAMMITReal <- function(model, data) {
   genotype <- data$Genotype
@@ -2140,6 +2376,11 @@ ggplot(aes(x = Q, y = value)) +
   theme(strip.background = element_blank(),
         panel.spacing.x = unit(5,"mm"),
         legend.position = c(0.75, 0.04))
+
+
+
+
+
 
 
 

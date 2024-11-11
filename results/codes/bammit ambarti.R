@@ -1,6 +1,5 @@
-#devtools::install_github("ebprado/AMBARTI/R package", ref='main')
+devtools::install_github("ebprado/AMBARTI/R package", ref='main')
 library(AMBARTI)
-library(bammit)
 
 load("~/Documents/GitHub/bammit/Real data/train_ireland.RData")
 load("~/Documents/GitHub/bammit/Real data/test_ireland.RData")
